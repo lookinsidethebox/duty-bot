@@ -3,7 +3,8 @@ const path = require('path');
 const moment = require('moment');
 
 const dutyFilePath = path.join(__dirname, 'duty.json');
-const usersFilePath = path.join(__dirname, '.users.json');
+const modersFilePath = path.join(__dirname, '.moders.json');
+const miniModersFilePath = path.join(__dirname, '.mini-moders.json');
 
 const getDuties = () => {
   try {
@@ -15,20 +16,30 @@ const getDuties = () => {
   }
 };
 
-const getUsers = () => {
+const getModers = () => {
   try {
-    const data = fs.readFileSync(usersFilePath, 'utf-8');
+    const data = fs.readFileSync(modersFilePath, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
-    console.error('Ошибка чтения .users.json:', error);
+    console.error('Ошибка чтения .moders.json:', error);
     return [];
   }
 };
 
-const getUserName = (name) => {
-  const users = getUsers();
-  const user = users.find((user) => user.name === name);
-  return user ? `${name} (@${user.nickname})` : `${name}`;
+const getModerName = (name) => {
+  const moders = getModers();
+  const moder = moders.find((user) => user.name === name);
+  return moder ? `${name} (@${moder.nickname})` : `${name}`;
+};
+
+const getMiniModers = () => {
+  try {
+    const data = fs.readFileSync(miniModersFilePath, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Ошибка чтения .mini-moders.json:', error);
+    return [];
+  }
 };
 
 const getCurrentDuty = () => {
@@ -136,5 +147,6 @@ module.exports = {
   getDutiesFormattedList,
   addDuty,
   removeFinishedDuty,
-  getUserName,
+  getModerName,
+  getMiniModers,
 };

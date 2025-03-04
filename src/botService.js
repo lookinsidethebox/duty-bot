@@ -3,7 +3,8 @@ const {
   getByStartDate,
   getByEndDate,
   getDutiesFormattedList,
-  getUserName,
+  getModerName,
+  getMiniModers,
 } = require('./dutyService');
 const { rulesLink } = require('./config');
 
@@ -11,8 +12,8 @@ const getDuty = () => {
   const currentDuty = getCurrentDuty();
 
   if (currentDuty) {
-    const userName = getUserName(currentDuty.name);
-    return `<b>Дежурный</b>: ${userName}`;
+    const moderName = getModerName(currentDuty.name);
+    return `<b>Дежурный</b>: ${moderName}`;
   } else {
     return 'Дежурного нет, никто не записался 😢';
   }
@@ -69,13 +70,28 @@ const getFormattedDutyList = () => {
   return message.trim();
 };
 
+const getMiniModersList = () => {
+  const miniModers = getMiniModers();
+
+  if (miniModers.length === 0) {
+    return 'Минимодераторов нет 😢';
+  }
+
+  let message = '📋 <b>Список минимодеров:</b>\n';
+  miniModers.forEach((moder) => {
+    message += `<b>${moder.name}</b> (@${moder.nickname}): ${moder.topics}\n`;
+  });
+
+  return message.trim();
+};
+
 const getMondayReminder = () => {
   const todayDuty = getByStartDate();
   let message;
 
   if (todayDuty) {
-    const userName = getUserName(todayDuty.name);
-    message = `🔔 Напоминание: с сегодняшнего дня дежурит ${userName}!`;
+    const moderName = getModerName(todayDuty.name);
+    message = `🔔 Напоминание: с сегодняшнего дня дежурит ${moderName}!`;
   } else {
     message = '🔔 Напоминание: сегодня дежурного нет, никто не записался 😢';
   }
@@ -88,8 +104,8 @@ const getSundayReminder = () => {
   let message;
 
   if (todayDuty) {
-    const userName = getUserName(todayDuty.name);
-    message = `🔔 Напоминание: сегодня заканчивается твое дежурство, ${userName}!\nПожалуйста, ознакомься с памяткой: ${rulesLink}`;
+    const moderName = getModerName(todayDuty.name);
+    message = `🔔 Напоминание: сегодня заканчивается твое дежурство, ${moderName}!\nПожалуйста, ознакомься с памяткой: ${rulesLink}`;
   } else {
     message =
       '🔔 Напоминание: сегодня дежурного нет, завершать дежурство некому 😢';
@@ -103,4 +119,5 @@ module.exports = {
   getFormattedDutyList,
   getMondayReminder,
   getSundayReminder,
+  getMiniModersList,
 };

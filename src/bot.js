@@ -13,6 +13,7 @@ const {
   getFormattedDutyList,
   getMondayReminder,
   getSundayReminder,
+  getMiniModersList,
 } = require('./botService');
 
 const bot = new Telegraf(botToken);
@@ -33,6 +34,7 @@ bot.use(async (ctx, next) => {
 bot.telegram.setMyCommands([
   { command: 'blame', description: 'Кто сегодня дежурный?' },
   { command: 'list', description: 'График дежурств' },
+  { command: 'mini_moders', description: 'Список минимодеров' },
   { command: 'rules', description: 'Памятка дежурного' },
   { command: 'money', description: 'Отчет по оплате за хостинг' },
 ]);
@@ -59,6 +61,10 @@ bot.command('money', async (ctx) => {
   await ctx.reply(`📋 <b>Отчет по оплате за хостинг:</b>\n ${moneyLink}`, {
     parse_mode: 'HTML',
   });
+});
+
+bot.command('mini_moders', async (ctx) => {
+  await ctx.reply(getMiniModersList(), { parse_mode: 'HTML' });
 });
 
 cron.schedule('0 10 * * 1', async () => {
