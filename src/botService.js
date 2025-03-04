@@ -6,7 +6,12 @@ const {
   getModerName,
   getMiniModers,
 } = require('./dutyService');
-const { rulesLink } = require('./config');
+const {
+  rulesLink,
+  moneyLink,
+  tinkoffCard,
+  hipotekarnaCard,
+} = require('./config');
 
 const getDuty = () => {
   const currentDuty = getCurrentDuty();
@@ -105,12 +110,21 @@ const getSundayReminder = () => {
 
   if (todayDuty) {
     const moderName = getModerName(todayDuty.name);
-    message = `🔔 Напоминание: сегодня заканчивается твое дежурство, ${moderName}!\nПожалуйста, ознакомься с памяткой: ${rulesLink}`;
+    message = `🔔 Напоминание: сегодня заканчивается твое дежурство, ${moderName}!\n`;
+    message += `Пожалуйста, ознакомься с памяткой: ${rulesLink}`;
   } else {
     message =
       '🔔 Напоминание: сегодня дежурного нет, завершать дежурство некому 😢';
   }
 
+  return message;
+};
+
+const getMoneyInfo = () => {
+  let message = `📋 <b>Отчет по оплате за хостинг:</b>\n ${moneyLink}\n\n`;
+  message += '<b>Реквизиты для перевода:</b>\n';
+  message += `Карта Тинькофф: ${tinkoffCard}\n`;
+  message += `Карта иностранного банка: ${hipotekarnaCard} (можно слать через PaySend)`;
   return message;
 };
 
@@ -120,4 +134,5 @@ module.exports = {
   getMondayReminder,
   getSundayReminder,
   getMiniModersList,
+  getMoneyInfo,
 };

@@ -1,12 +1,6 @@
 const { Telegraf } = require('telegraf');
 const cron = require('node-cron');
-const {
-  botToken,
-  chatId,
-  trustedIds,
-  rulesLink,
-  moneyLink,
-} = require('./config');
+const { botToken, chatId, trustedIds, rulesLink } = require('./config');
 const { removeFinishedDuty } = require('./dutyService');
 const {
   getDuty,
@@ -14,6 +8,7 @@ const {
   getMondayReminder,
   getSundayReminder,
   getMiniModersList,
+  getMoneyInfo,
 } = require('./botService');
 
 const bot = new Telegraf(botToken);
@@ -58,9 +53,7 @@ bot.command('rules', async (ctx) => {
 });
 
 bot.command('money', async (ctx) => {
-  await ctx.reply(`📋 <b>Отчет по оплате за хостинг:</b>\n ${moneyLink}`, {
-    parse_mode: 'HTML',
-  });
+  await ctx.reply(getMoneyInfo(), { parse_mode: 'HTML' });
 });
 
 bot.command('mini_moders', async (ctx) => {
