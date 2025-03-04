@@ -1,6 +1,12 @@
 const { Telegraf } = require('telegraf');
 const cron = require('node-cron');
-const { botToken, chatId, trustedIds, rulesLink } = require('./config');
+const {
+  botToken,
+  chatId,
+  trustedIds,
+  rulesLink,
+  moneyLink,
+} = require('./config');
 const { removeFinishedDuty } = require('./dutyService');
 const {
   getDuty,
@@ -28,6 +34,7 @@ bot.telegram.setMyCommands([
   { command: 'blame', description: 'Кто сегодня дежурный?' },
   { command: 'list', description: 'График дежурств' },
   { command: 'rules', description: 'Памятка дежурного' },
+  { command: 'money', description: 'Отчет по оплате за хостинг' },
 ]);
 
 bot.command('blame', async (ctx) => {
@@ -44,6 +51,12 @@ bot.command('list', async (ctx) => {
 
 bot.command('rules', async (ctx) => {
   await ctx.reply(`📋 <b>Памятка для дежурного:</b>\n ${rulesLink}`, {
+    parse_mode: 'HTML',
+  });
+});
+
+bot.command('money', async (ctx) => {
+  await ctx.reply(`📋 <b>Отчет по оплате за хостинг:</b>\n ${moneyLink}`, {
     parse_mode: 'HTML',
   });
 });

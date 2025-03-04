@@ -3,6 +3,7 @@ const {
   getByStartDate,
   getByEndDate,
   getDutiesFormattedList,
+  getUserName,
 } = require('./dutyService');
 const { rulesLink } = require('./config');
 
@@ -10,8 +11,8 @@ const getDuty = () => {
   const currentDuty = getCurrentDuty();
 
   if (currentDuty) {
-    const nickname = currentDuty.nickname ? ` (@${currentDuty.nickname})` : '';
-    return `<b>Дежурный</b>: ${currentDuty.name}${nickname}`;
+    const userName = getUserName(currentDuty.name);
+    return `<b>Дежурный</b>: ${userName}`;
   } else {
     return 'Дежурного нет, никто не записался 😢';
   }
@@ -73,8 +74,8 @@ const getMondayReminder = () => {
   let message;
 
   if (todayDuty) {
-    const nickname = todayDuty.nickname ? ` (@${todayDuty.nickname})` : '';
-    message = `🔔 Напоминание: с сегодняшнего дня дежурит ${todayDuty.name}${nickname}!`;
+    const userName = getUserName(todayDuty.name);
+    message = `🔔 Напоминание: с сегодняшнего дня дежурит ${userName}!`;
   } else {
     message = '🔔 Напоминание: сегодня дежурного нет, никто не записался 😢';
   }
@@ -87,8 +88,8 @@ const getSundayReminder = () => {
   let message;
 
   if (todayDuty) {
-    const nickname = todayDuty.nickname ? ` (@${todayDuty.nickname})` : '';
-    message = `🔔 Напоминание: сегодня заканчивается твое дежурство, ${todayDuty.name}${nickname}!\nПожалуйста, ознакомься с памяткой: ${rulesLink}`;
+    const userName = getUserName(todayDuty.name);
+    message = `🔔 Напоминание: сегодня заканчивается твое дежурство, ${userName}!\nПожалуйста, ознакомься с памяткой: ${rulesLink}`;
   } else {
     message =
       '🔔 Напоминание: сегодня дежурного нет, завершать дежурство некому 😢';

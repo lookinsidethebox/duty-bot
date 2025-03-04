@@ -5,4 +5,5 @@ module.exports = {
   chatId: process.env.CHAT_ID,
   trustedIds: process.env.TRUSTED_IDS.split(',').map((id) => id.trim()),
   rulesLink: process.env.RULES_LINK,
+  moneyLink: process.env.MONEY_LINK,
 };

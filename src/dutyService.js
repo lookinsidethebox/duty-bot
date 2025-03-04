@@ -1,16 +1,34 @@
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
-const filePath = path.join(__dirname, 'duty.json');
+
+const dutyFilePath = path.join(__dirname, 'duty.json');
+const usersFilePath = path.join(__dirname, '.users.json');
 
 const getDuties = () => {
   try {
-    const data = fs.readFileSync(filePath, 'utf-8');
+    const data = fs.readFileSync(dutyFilePath, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
     console.error('Ошибка чтения duty.json:', error);
     return [];
   }
+};
+
+const getUsers = () => {
+  try {
+    const data = fs.readFileSync(usersFilePath, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Ошибка чтения .users.json:', error);
+    return [];
+  }
+};
+
+const getUserName = (name) => {
+  const users = getUsers();
+  const user = users.find((user) => user.name === name);
+  return user ? `${name} (@${user.nickname})` : `${name}`;
 };
 
 const getCurrentDuty = () => {
@@ -83,7 +101,7 @@ const getDutiesFormattedList = () => {
 const addDuty = (duty) => {
   const duties = getDuties();
   duties.push(duty);
-  fs.writeFileSync(filePath, JSON.stringify(duties, null, 2));
+  fs.writeFileSync(dutyFilePath, JSON.stringify(duties, null, 2));
 };
 
 const removeFinishedDuty = () => {
@@ -97,7 +115,7 @@ const removeFinishedDuty = () => {
   if (currentDuties.length !== duties.length) {
     try {
       fs.writeFileSync(
-        filePath,
+        dutyFilePath,
         JSON.stringify(currentDuties, null, 2),
         'utf-8'
       );
@@ -118,4 +136,5 @@ module.exports = {
   getDutiesFormattedList,
   addDuty,
   removeFinishedDuty,
+  getUserName,
 };
