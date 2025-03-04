@@ -1,14 +1,13 @@
-const moment = require('moment');
-const { getDuties } = require('./dutyService');
+const {
+  getCurrentDuty,
+  getByStartDate,
+  getByEndDate,
+  getDutiesFormattedList,
+} = require('./dutyService');
 const { rulesLink } = require('./config');
 
-const getCurrentDuty = () => {
-  const duties = getDuties();
-  const today = moment().format('YYYY-MM-DD');
-
-  const currentDuty = duties.find((d) =>
-    moment(today).isBetween(d.startDate, d.endDate, null, '[]')
-  );
+const getDuty = () => {
+  const currentDuty = getCurrentDuty();
 
   if (currentDuty) {
     const nickname = currentDuty.nickname ? ` (@${currentDuty.nickname})` : '';
@@ -19,34 +18,13 @@ const getCurrentDuty = () => {
 };
 
 const getFormattedDutyList = () => {
-  const duties = getDuties();
+  const dutiesByMonth = getDutiesFormattedList();
 
-  if (duties.length === 0) {
+  if (!dutiesByMonth) {
     return 'График дежурств пуст 😢';
   }
 
   let message = '📋 <b>График дежурств:</b>\n';
-  const dutiesByMonth = {};
-
-  duties.forEach((duty) => {
-    const startDate = moment(duty.startDate);
-    const endDate = moment(duty.endDate);
-    const monthYear = startDate.format('MMMM YYYY');
-
-    if (!dutiesByMonth[monthYear]) {
-      dutiesByMonth[monthYear] = [];
-    }
-
-    dutiesByMonth[monthYear].push({
-      startDate: startDate,
-      endDate: endDate,
-      name: duty.name,
-    });
-  });
-
-  Object.keys(dutiesByMonth).forEach((month) => {
-    dutiesByMonth[month].sort((a, b) => a.startDate - b.startDate);
-  });
 
   Object.keys(dutiesByMonth).forEach((month) => {
     message += `\n<b>${month}:</b>\n`;
@@ -91,11 +69,9 @@ const getFormattedDutyList = () => {
 };
 
 const getMondayReminder = () => {
-  const today = moment().format('YYYY-MM-DD');
-  const duties = getDuties();
-  const todayDuty = duties.find((duty) => duty.startDate === today);
-
+  const todayDuty = getByStartDate();
   let message;
+
   if (todayDuty) {
     const nickname = todayDuty.nickname ? ` (@${todayDuty.nickname})` : '';
     message = `🔔 Напоминание: с сегодняшнего дня дежурит ${todayDuty.name}${nickname}!`;
@@ -107,11 +83,9 @@ const getMondayReminder = () => {
 };
 
 const getSundayReminder = () => {
-  const today = moment().format('YYYY-MM-DD');
-  const duties = getDuties();
-  const todayDuty = duties.find((duty) => duty.startDate === today);
-
+  const todayDuty = getByEndDate();
   let message;
+
   if (todayDuty) {
     const nickname = todayDuty.nickname ? ` (@${todayDuty.nickname})` : '';
     message = `🔔 Напоминание: сегодня заканчивается твое дежурство, ${todayDuty.name}${nickname}!\nПожалуйста, ознакомься с памяткой: ${rulesLink}`;
@@ -124,7 +98,7 @@ const getSundayReminder = () => {
 };
 
 module.exports = {
-  getCurrentDuty,
+  getDuty,
   getFormattedDutyList,
   getMondayReminder,
   getSundayReminder,

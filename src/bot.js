@@ -1,12 +1,13 @@
 const { Telegraf } = require('telegraf');
 const cron = require('node-cron');
 const { botToken, chatId, trustedIds, rulesLink } = require('./config');
+const { removeFinishedDuty } = require('./dutyService');
 const {
-  getCurrentDuty,
+  getDuty,
   getFormattedDutyList,
   getMondayReminder,
   getSundayReminder,
-} = require('./helpers');
+} = require('./botService');
 
 const bot = new Telegraf(botToken);
 
@@ -30,11 +31,11 @@ bot.telegram.setMyCommands([
 ]);
 
 bot.command('blame', async (ctx) => {
-  await ctx.reply(getCurrentDuty(), { parse_mode: 'HTML' });
+  await ctx.reply(getDuty(), { parse_mode: 'HTML' });
 });
 
 bot.hears(/кто дежурный\??/i, async (ctx) => {
-  await ctx.reply(getCurrentDuty());
+  await ctx.reply(getDuty());
 });
 
 bot.command('list', async (ctx) => {
@@ -57,6 +58,10 @@ cron.schedule('0 20 * * 0', async () => {
   const message = getSundayReminder();
   await bot.telegram.sendMessage(chatId, message);
   console.log('Воскресное напоминание отправлено: ', message);
+});
+
+cron.schedule('0 0 * * 1', async () => {
+  removeFinishedDuty();
 });
 
 module.exports = bot;
