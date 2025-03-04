@@ -11,6 +11,8 @@ const {
   getMoneyInfo,
   getNextDutySlots,
   assignDuty,
+  getDutiesToRemove,
+  removeUserDuty,
 } = require('./botService');
 
 const bot = new Telegraf(botToken);
@@ -32,6 +34,7 @@ bot.telegram.setMyCommands([
   { command: 'blame', description: 'Кто сегодня дежурный?' },
   { command: 'list', description: 'График дежурств' },
   { command: 'assign', description: 'Записаться на дежурство' },
+  { command: 'remove', description: 'Удалить дежурство' },
   { command: 'mini_moders', description: 'Список мини-модеров' },
   { command: 'rules', description: 'Памятка дежурного' },
   { command: 'money', description: 'Отчет по оплате за хостинг' },
@@ -71,6 +74,35 @@ bot.action(/select_slot_.+/, async (ctx) => {
   const data = ctx.match[0];
   const selectedDate = data.replace('select_slot_', '');
   const message = await assignDuty(ctx.from.username, selectedDate);
+  await ctx.reply(message);
+  await ctx.deleteMessage();
+  ctx.answerCbQuery();
+});
+
+bot.command('remove', (ctx) => {
+  const result = getDutiesToRemove(ctx.from.username);
+  console.log('result: ', result);
+
+  if (typeof result === 'string') {
+    ctx.reply(result, { parse_mode: 'HTML' });
+  } else {
+    const buttons = result.map((duty) => [
+      { text: duty.label, callback_data: `remove_duty_${duty.startDate}` },
+    ]);
+
+    ctx.reply('❗<b>Какое дежурство ты хочешь удалить?</b>', {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: buttons,
+      },
+    });
+  }
+});
+
+bot.action(/remove_duty_.+/, async (ctx) => {
+  const data = ctx.match[0];
+  const selectedDate = data.replace('remove_duty_', '');
+  const message = await removeUserDuty(ctx.from.username, selectedDate);
   await ctx.reply(message);
   await ctx.deleteMessage();
   ctx.answerCbQuery();

@@ -5,6 +5,8 @@ const {
   getDutiesFormattedList,
   getAvailableSlots,
   createDuty,
+  getUserDuties,
+  removeDuty,
 } = require('./dutyService');
 const {
   getModerName,
@@ -100,7 +102,6 @@ const getFormattedDutyList = () => {
 const getNextDutySlots = () => {
   return getAvailableSlots().map((slot) => ({
     startDate: slot.startDate,
-    endDate: slot.endDate,
     label: `${slot.startDate} — ${slot.endDate}`,
   }));
 };
@@ -116,11 +117,44 @@ const assignDuty = async (username, selectedDate) => {
   return `✅ Запись успешно добавлена! Твое дежурство будет начинаться с ${selectedDate}.`;
 };
 
+const getDutiesToRemove = (username) => {
+  const moder = getModerByUsername(username);
+
+  if (!moder) {
+    return '⛔ Извини, я не нашел тебя в списке модераторов.';
+  }
+
+  const duties = getUserDuties(moder.name);
+
+  if (duties.length === 0) {
+    return '⛔ Извини, я не нашел твои дежурства в списке.';
+  }
+
+  return duties;
+};
+
+const removeUserDuty = async (username, selectedDate) => {
+  const duties = getDutiesToRemove(username);
+
+  if (typeof duties === 'string') {
+    return duties;
+  }
+
+  const dutyToRemove = duties.find((duty) => duty.startDate === selectedDate);
+
+  if (!dutyToRemove) {
+    return '⛔ Кажется, ты пытаешься удалить чужое или несуществующее дежурство.';
+  }
+
+  await removeDuty(dutyToRemove);
+  return `✅ Дежурство успешно удалено! Не забудь записаться на новое: /assign`;
+};
+
 const getMiniModersList = () => {
   const miniModers = getMiniModers();
 
   if (miniModers.length === 0) {
-    return 'Минимодераторов нет 😢';
+    return 'Минимодеров нет 😢';
   }
 
   let message = '📋 <b>Список минимодеров:</b>\n';
@@ -182,4 +216,6 @@ module.exports = {
   getMoneyInfo,
   getNextDutySlots,
   assignDuty,
+  getDutiesToRemove,
+  removeUserDuty,
 };

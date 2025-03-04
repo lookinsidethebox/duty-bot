@@ -19,6 +19,20 @@ const getDuties = () => {
   }
 };
 
+const getUserDuties = (name) => {
+  try {
+    const duties = getDuties().filter((duty) => duty.name === name);
+    return duties.map((d) => ({
+      startDate: d.startDate,
+      label: `${moment(d.startDate).format('DD MMMM')} — ${moment(
+        d.endDate
+      ).format('DD MMMM')}`,
+    }));
+  } catch (error) {
+    return [];
+  }
+};
+
 const getCurrentDuty = () => {
   try {
     const duties = getDuties();
@@ -26,7 +40,6 @@ const getCurrentDuty = () => {
       moment().isBetween(d.startDate, d.endDate, null, '[]')
     );
   } catch (error) {
-    console.error('Ошибка чтения duty.json:', error);
     return [];
   }
 };
@@ -37,7 +50,6 @@ const getByStartDate = () => {
     const today = moment().format('YYYY-MM-DD');
     return duties.find((duty) => duty.startDate === today);
   } catch (error) {
-    console.error('Ошибка чтения duty.json:', error);
     return [];
   }
 };
@@ -48,7 +60,6 @@ const getByEndDate = () => {
     const today = moment().format('YYYY-MM-DD');
     return duties.find((duty) => duty.endDate === today);
   } catch (error) {
-    console.error('Ошибка чтения duty.json:', error);
     return [];
   }
 };
@@ -156,19 +167,36 @@ const createDuty = async (moderName, selectedDate) => {
   }
 };
 
-const removeFinishedDuty = () => {
+const removeDuty = async (duty) => {
   const duties = getDuties();
-  const today = moment().startOf('day');
-  const currentDuties = duties.filter(
-    (duty) => !moment(duty.endDate).isBefore(today)
-  );
-  let removedCount = duties.length - currentDuties.length;
+  const activeDuties = duties.filter((d) => d.startDate !== duty.startDate);
 
-  if (currentDuties.length !== duties.length) {
+  if (activeDuties.length !== duties.length) {
     try {
       fs.writeFileSync(
         dutyFilePath,
-        JSON.stringify(currentDuties, null, 2),
+        JSON.stringify(activeDuties, null, 2),
+        'utf-8'
+      );
+    } catch (error) {
+      console.error('Ошибка записи в duty.json:', error);
+    }
+  }
+};
+
+const removeFinishedDuty = () => {
+  const duties = getDuties();
+  const today = moment().startOf('day');
+  const activeDuties = duties.filter(
+    (duty) => !moment(duty.endDate).isBefore(today)
+  );
+  let removedCount = duties.length - activeDuties.length;
+
+  if (activeDuties.length !== duties.length) {
+    try {
+      fs.writeFileSync(
+        dutyFilePath,
+        JSON.stringify(activeDuties, null, 2),
         'utf-8'
       );
       console.log(`Количество удаленных старых дежурств: ${removedCount}.`);
@@ -187,6 +215,8 @@ module.exports = {
   getByEndDate,
   getDutiesFormattedList,
   createDuty,
+  removeDuty,
   removeFinishedDuty,
   getAvailableSlots,
+  getUserDuties,
 };
