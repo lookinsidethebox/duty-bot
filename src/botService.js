@@ -3,9 +3,15 @@ const {
   getByStartDate,
   getByEndDate,
   getDutiesFormattedList,
+  getAvailableSlots,
+  createDuty,
+} = require('./dutyService');
+const {
   getModerName,
   getMiniModers,
-} = require('./dutyService');
+  getModersNotOnDuty,
+  getModerByUsername,
+} = require('./userService');
 const {
   rulesLink,
   moneyLink,
@@ -32,47 +38,82 @@ const getFormattedDutyList = () => {
   }
 
   let message = '📋 <b>График дежурств:</b>\n';
+  let previousDutyEndDate = null;
+  let currentMonth = '';
 
   Object.keys(dutiesByMonth).forEach((month) => {
-    message += `\n<b>${month}:</b>\n`;
     const monthDuties = dutiesByMonth[month];
 
-    for (let i = 0; i < monthDuties.length; i++) {
-      const duty = monthDuties[i];
-      const startDateStr = duty.startDate.format('DD.MM.YYYY');
-      const endDateStr = duty.endDate.format('DD.MM.YYYY');
+    monthDuties.forEach((duty) => {
+      const startDateStr = duty.startDate.format('DD MMMM');
+      const endDateStr = duty.endDate.format('DD MMMM');
+      const dutyMonth = duty.startDate.format('MMMM YYYY');
 
-      message += `${startDateStr} — ${endDateStr}: ${duty.name}\n`;
-
-      if (i < monthDuties.length - 1) {
-        const nextDuty = monthDuties[i + 1];
-        const gapInDays = nextDuty.startDate.diff(duty.endDate, 'days');
+      if (previousDutyEndDate) {
+        const gapInDays = duty.startDate.diff(previousDutyEndDate, 'days');
 
         if (gapInDays > 1) {
-          let missingStart = duty.endDate.clone().add(1, 'day');
+          let missingStart = previousDutyEndDate.clone().add(1, 'day');
 
-          while (missingStart.isBefore(nextDuty.startDate)) {
-            let missingEndOfWeek = missingStart.clone().endOf('week');
-            if (missingEndOfWeek.isAfter(nextDuty.startDate)) {
-              missingEndOfWeek = nextDuty.startDate.clone().subtract(1, 'day');
+          while (missingStart.isBefore(duty.startDate)) {
+            let missingEnd = missingStart.clone().add(6, 'day');
+            const missingMonth = missingStart.format('MMMM YYYY');
+
+            if (missingMonth !== currentMonth) {
+              message += `\n<b>${missingMonth}:</b>\n`;
+              currentMonth = missingMonth;
             }
 
-            if (missingStart.isBefore(missingEndOfWeek)) {
-              message += `${missingStart.format(
-                'DD.MM.YYYY'
-              )} — ${missingEndOfWeek.format(
-                'DD.MM.YYYY'
-              )}: ❗<b>Дежурного нет</b>\n`;
-            }
-
-            missingStart = missingEndOfWeek.clone().add(1, 'day');
+            message += `${missingStart.format('DD MMMM')} — ${missingEnd.format(
+              'DD MMMM'
+            )}: ❗<b>Дежурного нет</b>\n`;
+            missingStart = missingEnd.clone().add(1, 'day');
           }
         }
       }
-    }
+
+      if (dutyMonth !== currentMonth) {
+        const capitalizedMonthYear =
+          dutyMonth.charAt(0).toUpperCase() + dutyMonth.slice(1);
+        message += `\n<b>${capitalizedMonthYear}:</b>\n`;
+        currentMonth = dutyMonth;
+      }
+
+      message += `${startDateStr} — ${endDateStr}: ${duty.name}\n`;
+      previousDutyEndDate = duty.endDate.clone();
+    });
   });
 
+  const modersNotOnDuty = getModersNotOnDuty();
+
+  if (modersNotOnDuty.length > 0) {
+    message += `\n\n❗<b>Модераторы, не записавшиеся на дежурство:</b>\n`;
+    modersNotOnDuty.forEach((moder) => {
+      message += `${getModerName(moder.name)}\n`;
+    });
+    message += 'Записаться на новое дежурство: /assign';
+  }
+
   return message.trim();
+};
+
+const getNextDutySlots = () => {
+  return getAvailableSlots().map((slot) => ({
+    startDate: slot.startDate,
+    endDate: slot.endDate,
+    label: `${slot.startDate} — ${slot.endDate}`,
+  }));
+};
+
+const assignDuty = async (username, selectedDate) => {
+  const moder = getModerByUsername(username);
+
+  if (!moder) {
+    return '⛔ Извини, я не нашел тебя в списке модераторов. Запись не добавлена.';
+  }
+
+  await createDuty(moder.name, selectedDate);
+  return `✅ Запись успешно добавлена! Твое дежурство будет начинаться с ${selectedDate}.`;
 };
 
 const getMiniModersList = () => {
@@ -96,9 +137,10 @@ const getMondayReminder = () => {
 
   if (todayDuty) {
     const moderName = getModerName(todayDuty.name);
-    message = `🔔 Напоминание: с сегодняшнего дня дежурит ${moderName}!`;
+    message = `🔔 <b>Напоминание:</b> с сегодняшнего дня дежурит ${moderName}!`;
   } else {
-    message = '🔔 Напоминание: сегодня дежурного нет, никто не записался 😢';
+    message =
+      '🔔 <b>Напоминание:</b> сегодня дежурного нет, никто не записался 😢';
   }
 
   return message;
@@ -110,11 +152,14 @@ const getSundayReminder = () => {
 
   if (todayDuty) {
     const moderName = getModerName(todayDuty.name);
-    message = `🔔 Напоминание: сегодня заканчивается твое дежурство, ${moderName}!\n`;
-    message += `Пожалуйста, ознакомься с памяткой: ${rulesLink}`;
+    message = `🔔 <b>Напоминание:</b> сегодня заканчивается твое дежурство, ${moderName}!\n`;
+    message += `Пожалуйста, ознакомься с памяткой: ${rulesLink}\n`;
+    message +=
+      '❗Не забудь записаться на новое дежурство с помощью команды: /assign';
   } else {
     message =
-      '🔔 Напоминание: сегодня дежурного нет, завершать дежурство некому 😢';
+      '🔔 <b>Напоминание:</b> сегодня дежурного нет, завершать дежурство некому 😢\n';
+    message += 'Записаться на новое дежурство: /assign';
   }
 
   return message;
@@ -135,4 +180,6 @@ module.exports = {
   getSundayReminder,
   getMiniModersList,
   getMoneyInfo,
+  getNextDutySlots,
+  assignDuty,
 };

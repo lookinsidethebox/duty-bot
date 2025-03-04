@@ -1,43 +1,20 @@
 const fs = require('fs');
+const fsp = require('fs/promises');
 const path = require('path');
 const moment = require('moment');
+require('moment/locale/ru');
+moment.locale('ru');
 
 const dutyFilePath = path.join(__dirname, 'duty.json');
-const modersFilePath = path.join(__dirname, '.moders.json');
-const miniModersFilePath = path.join(__dirname, '.mini-moders.json');
 
 const getDuties = () => {
   try {
     const data = fs.readFileSync(dutyFilePath, 'utf-8');
-    return JSON.parse(data);
+    const duties = JSON.parse(data);
+    duties.sort((a, b) => moment(a.startDate).diff(moment(b.startDate)));
+    return duties;
   } catch (error) {
     console.error('Ошибка чтения duty.json:', error);
-    return [];
-  }
-};
-
-const getModers = () => {
-  try {
-    const data = fs.readFileSync(modersFilePath, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('Ошибка чтения .moders.json:', error);
-    return [];
-  }
-};
-
-const getModerName = (name) => {
-  const moders = getModers();
-  const moder = moders.find((user) => user.name === name);
-  return moder ? `${name} (@${moder.nickname})` : `${name}`;
-};
-
-const getMiniModers = () => {
-  try {
-    const data = fs.readFileSync(miniModersFilePath, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('Ошибка чтения .mini-moders.json:', error);
     return [];
   }
 };
@@ -45,9 +22,8 @@ const getMiniModers = () => {
 const getCurrentDuty = () => {
   try {
     const duties = getDuties();
-    const today = moment().format('YYYY-MM-DD');
     return duties.find((d) =>
-      moment(today).isBetween(d.startDate, d.endDate, null, '[]')
+      moment().isBetween(d.startDate, d.endDate, null, '[]')
     );
   } catch (error) {
     console.error('Ошибка чтения duty.json:', error);
@@ -109,10 +85,75 @@ const getDutiesFormattedList = () => {
   return dutiesByMonth;
 };
 
-const addDuty = (duty) => {
+const getAvailableSlots = () => {
   const duties = getDuties();
-  duties.push(duty);
-  fs.writeFileSync(dutyFilePath, JSON.stringify(duties, null, 2));
+  const today = moment();
+  const slots = [];
+  let lastDutyEndDate;
+
+  if (duties.length === 0) {
+    lastDutyEndDate = today.clone().endOf('week').add(1, 'day');
+  } else {
+    lastDutyEndDate = moment(duties[duties.length - 1].endDate).add(1, 'day');
+  }
+
+  for (let i = 0; i < duties.length - 1 && slots.length < 4; i++) {
+    const currentDutyEnd = moment(duties[i].endDate);
+    const nextDutyStart = moment(duties[i + 1].startDate);
+    let gapStart = currentDutyEnd.clone().add(1, 'day');
+
+    while (gapStart.isBefore(nextDutyStart) && slots.length < 4) {
+      const slotStartDate = gapStart.clone().startOf('week');
+      const slotEndDate = slotStartDate.clone().endOf('week');
+
+      if (slotStartDate.isBefore(nextDutyStart)) {
+        slots.push({
+          startDate: slotStartDate.format('DD MMMM'),
+          endDate: slotEndDate.format('DD MMMM'),
+        });
+      }
+
+      gapStart = slotEndDate.clone().add(1, 'day');
+    }
+  }
+
+  while (slots.length < 4) {
+    const nextSlotStartDate = lastDutyEndDate.clone();
+    const nextSlotEndDate = nextSlotStartDate.clone().add(6, 'days');
+
+    slots.push({
+      startDate: nextSlotStartDate.format('DD MMMM'),
+      endDate: nextSlotEndDate.format('DD MMMM'),
+    });
+
+    lastDutyEndDate.add(7, 'days');
+  }
+
+  return slots;
+};
+
+const createDuty = async (moderName, selectedDate) => {
+  const duties = getDuties();
+  const formattedStartDate = moment(selectedDate, 'DD MMMM', 'ru');
+  const endDate = formattedStartDate
+    .clone()
+    .add(6, 'days')
+    .format('YYYY-MM-DD');
+
+  const newDuty = {
+    startDate: formattedStartDate.format('YYYY-MM-DD'),
+    endDate: endDate,
+    name: moderName,
+  };
+
+  duties.push(newDuty);
+  duties.sort((a, b) => moment(a.startDate).diff(moment(b.startDate)));
+
+  try {
+    await fsp.writeFile(dutyFilePath, JSON.stringify(duties, null, 2));
+  } catch (error) {
+    console.error('Ошибка записи в duty.json:', error);
+  }
 };
 
 const removeFinishedDuty = () => {
@@ -145,8 +186,7 @@ module.exports = {
   getByStartDate,
   getByEndDate,
   getDutiesFormattedList,
-  addDuty,
+  createDuty,
   removeFinishedDuty,
-  getModerName,
-  getMiniModers,
+  getAvailableSlots,
 };
