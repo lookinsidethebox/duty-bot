@@ -20,6 +20,12 @@ const {
   tinkoffCard,
   hipotekarnaCard,
 } = require('./config');
+const {
+  getCircleStartDate,
+  getCircleFinishDate,
+  isCircleStartDateToday,
+  updateCircleStartDate,
+} = require('./paramsService');
 
 const getDuty = () => {
   const currentDuty = getCurrentDuty();
@@ -42,6 +48,10 @@ const getFormattedDutyList = () => {
   let message = '📋 <b>График дежурств:</b>\n';
   let previousDutyEndDate = null;
   let currentMonth = '';
+  const circleStartDate = getCircleStartDate();
+  const circleFinishDate = getCircleFinishDate();
+  let isCircleStartDateSet = false;
+  let isCircleFinishDateSet = false;
 
   Object.keys(dutiesByMonth).forEach((month) => {
     const monthDuties = dutiesByMonth[month];
@@ -49,7 +59,7 @@ const getFormattedDutyList = () => {
     monthDuties.forEach((duty) => {
       const startDateStr = duty.startDate.format('DD MMMM');
       const endDateStr = duty.endDate.format('DD MMMM');
-      const dutyMonth = duty.startDate.format('MMMM YYYY');
+      const dutyMonth = getCapitalizedMonth(duty.startDate.format('MMMM YYYY'));
 
       if (previousDutyEndDate) {
         const gapInDays = duty.startDate.diff(previousDutyEndDate, 'days');
@@ -59,7 +69,23 @@ const getFormattedDutyList = () => {
 
           while (missingStart.isBefore(duty.startDate)) {
             let missingEnd = missingStart.clone().add(6, 'day');
-            const missingMonth = missingStart.format('MMMM YYYY');
+            const missingMonth = getCapitalizedMonth(
+              missingStart.format('MMMM YYYY')
+            );
+
+            if (missingStart >= circleStartDate && !isCircleStartDateSet) {
+              message += '\n 🚀 Начало нового круга \n\n';
+              isCircleStartDateSet = true;
+            }
+
+            const nextWeekStartDate = missingStart.clone().add(1, 'day');
+            if (
+              nextWeekStartDate >= circleFinishDate &&
+              !isCircleFinishDateSet
+            ) {
+              message += '\n 🏁 Конец круга \n\n';
+              isCircleFinishDateSet = true;
+            }
 
             if (missingMonth !== currentMonth) {
               message += `\n<b>${missingMonth}:</b>\n`;
@@ -75,10 +101,18 @@ const getFormattedDutyList = () => {
       }
 
       if (dutyMonth !== currentMonth) {
-        const capitalizedMonthYear =
-          dutyMonth.charAt(0).toUpperCase() + dutyMonth.slice(1);
-        message += `\n<b>${capitalizedMonthYear}:</b>\n`;
+        message += `\n<b>${dutyMonth}:</b>\n`;
         currentMonth = dutyMonth;
+      }
+
+      if (duty.startDate >= circleStartDate && !isCircleStartDateSet) {
+        message += '\n 🚀 Начало нового круга \n\n';
+        isCircleStartDateSet = true;
+      }
+
+      if (duty.startDate >= circleFinishDate && !isCircleFinishDateSet) {
+        message += '\n 🏁 Конец круга \n\n';
+        isCircleFinishDateSet = true;
       }
 
       message += `${startDateStr} — ${endDateStr}: ${duty.name}\n`;
@@ -86,21 +120,41 @@ const getFormattedDutyList = () => {
     });
   });
 
+  if (!isCircleFinishDateSet) {
+    message += '\n 🏁 Конец круга\n';
+  }
+
   const modersNotOnDuty = getModersNotOnDuty();
 
   if (modersNotOnDuty.length > 0) {
-    message += `\n\n❗<b>Модераторы, не записавшиеся на дежурство:</b>\n`;
+    message += `\n❗<b>Модеры, не записавшиеся на дежурство:</b>\n`;
     modersNotOnDuty.forEach((moder) => {
-      message += `${getModerName(moder.name)}\n`;
+      message += `${getModerName(moder.name)}`;
     });
-    message += 'Записаться на новое дежурство: /assign';
   }
 
+  message += '\nЗаписаться на новое дежурство: /assign';
   return message.trim();
 };
 
-const getNextDutySlots = () => {
-  return getAvailableSlots().map((slot) => ({
+const getCapitalizedMonth = (month) => {
+  return month.charAt(0).toUpperCase() + month.slice(1);
+};
+
+const getNextDutySlots = (username) => {
+  const moder = getModerByUsername(username);
+
+  if (!moder) {
+    return '⛔ Извини, я не нашел тебя в списке модеров. Ты не можешь записаться на дежурство.';
+  }
+
+  const result = getAvailableSlots(moder.name);
+
+  if (typeof result === 'string') {
+    return result;
+  }
+
+  return result.map((slot) => ({
     startDate: slot.startDate,
     label: `${slot.startDate} — ${slot.endDate}`,
   }));
@@ -110,7 +164,7 @@ const assignDuty = async (username, selectedDate) => {
   const moder = getModerByUsername(username);
 
   if (!moder) {
-    return '⛔ Извини, я не нашел тебя в списке модераторов. Запись не добавлена.';
+    return '⛔ Извини, я не нашел тебя в списке модеров. Запись не добавлена.';
   }
 
   await createDuty(moder.name, selectedDate);
@@ -121,7 +175,7 @@ const getDutiesToRemove = (username) => {
   const moder = getModerByUsername(username);
 
   if (!moder) {
-    return '⛔ Извини, я не нашел тебя в списке модераторов.';
+    return '⛔ Извини, я не нашел тебя в списке модеров.';
   }
 
   const duties = getUserDuties(moder.name);
@@ -207,6 +261,13 @@ const getMoneyInfo = () => {
   return message;
 };
 
+const makeEverydayMaintenance = () => {
+  if (isCircleStartDateToday()) {
+    updateCircleStartDate();
+  }
+  console.log('✅ Ежедневное обслуживание произведено успешно!');
+};
+
 module.exports = {
   getDuty,
   getFormattedDutyList,
@@ -218,4 +279,5 @@ module.exports = {
   assignDuty,
   getDutiesToRemove,
   removeUserDuty,
+  makeEverydayMaintenance,
 };

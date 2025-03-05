@@ -2,6 +2,7 @@ const { Telegraf } = require('telegraf');
 const cron = require('node-cron');
 const { botToken, chatId, trustedIds, rulesLink } = require('./config');
 const { removeFinishedDuty } = require('./dutyService');
+const { setCircleStartDateManually } = require('./paramsService');
 const {
   getDuty,
   getFormattedDutyList,
@@ -13,9 +14,11 @@ const {
   assignDuty,
   getDutiesToRemove,
   removeUserDuty,
+  makeEverydayMaintenance,
 } = require('./botService');
 
 const bot = new Telegraf(botToken);
+const userState = {};
 
 const isTrustedChat = (ctx) => {
   return ctx.chat && trustedIds.includes(ctx.chat.id.toString());
@@ -41,6 +44,7 @@ bot.telegram.setMyCommands([
   // { command: 'test_monday', description: 'Тест getMondayReminder' },
   // { command: 'test_sunday', description: 'Тест getSundayReminder' },
   // { command: 'test_remove', description: 'Тест removeFinishedDuty' },
+  // { command: 'test_maintenance', description: 'Тест makeEverydayMaintenance' },
 ]);
 
 bot.command('blame', async (ctx) => {
@@ -48,7 +52,24 @@ bot.command('blame', async (ctx) => {
 });
 
 bot.hears(/кто дежурный\??/i, async (ctx) => {
-  await ctx.reply(getDuty());
+  await ctx.reply(getDuty(), { parse_mode: 'HTML' });
+});
+
+bot.hears('set_circle_start_date', async (ctx) => {
+  const userId = ctx.from.id;
+  userState[userId] = 'awaiting_circle_start_date';
+  await ctx.reply('Пожалуйста, отправь дату в формате YYYY-MM-DD.');
+});
+
+bot.hears(/^\d{4}-\d{2}-\d{2}$/, async (ctx) => {
+  const userId = ctx.from.id;
+
+  if (userState[userId] === 'awaiting_circle_start_date') {
+    const newDate = ctx.message.text.trim();
+    await setCircleStartDateManually(newDate);
+    userState[userId] = null;
+    await ctx.reply(`Дата начала круга успешно установлена: ${newDate}`);
+  }
 });
 
 bot.command('list', async (ctx) => {
@@ -56,18 +77,22 @@ bot.command('list', async (ctx) => {
 });
 
 bot.command('assign', (ctx) => {
-  const slots = getNextDutySlots();
+  const result = getNextDutySlots(ctx.from.username);
 
-  const buttons = slots.map((slot) => [
-    { text: slot.label, callback_data: `select_slot_${slot.startDate}` },
-  ]);
+  if (typeof result === 'string') {
+    ctx.reply(result, { parse_mode: 'HTML' });
+  } else {
+    const buttons = result.map((slot) => [
+      { text: slot.label, callback_data: `select_slot_${slot.startDate}` },
+    ]);
 
-  ctx.reply('📋 <b>Свободные слоты для дежурства:</b>', {
-    parse_mode: 'HTML',
-    reply_markup: {
-      inline_keyboard: buttons,
-    },
-  });
+    ctx.reply('📋 <b>Свободные слоты для дежурства:</b>', {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: buttons,
+      },
+    });
+  }
 });
 
 bot.action(/select_slot_.+/, async (ctx) => {
@@ -134,6 +159,10 @@ bot.command('test_remove', async (ctx) => {
   removeFinishedDuty();
 });
 
+bot.command('test_maintenance', async (ctx) => {
+  makeEverydayMaintenance();
+});
+
 cron.schedule('0 10 * * 1', async () => {
   const message = getMondayReminder();
   await bot.telegram.sendMessage(chatId, message);
@@ -148,6 +177,10 @@ cron.schedule('0 20 * * 0', async () => {
 
 cron.schedule('0 0 * * 1', async () => {
   removeFinishedDuty();
+});
+
+cron.schedule('0 0 * * *', async () => {
+  makeEverydayMaintenance();
 });
 
 module.exports = bot;

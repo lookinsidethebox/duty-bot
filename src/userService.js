@@ -2,8 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const { getDuties } = require('./dutyService');
 
-const modersFilePath = path.join(__dirname, '.moders.json');
-const miniModersFilePath = path.join(__dirname, '.mini-moders.json');
+const modersFilePath = path.join(__dirname, '..', 'data', '.moders.json');
+const miniModersFilePath = path.join(
+  __dirname,
+  '..',
+  'data',
+  '.mini-moders.json'
+);
 
 const getModers = () => {
   try {
@@ -42,6 +47,10 @@ const getMiniModers = () => {
 };
 
 const getModerByUsername = (username) => {
+  if (!username) {
+    return null;
+  }
+
   const moders = getModers();
   return moders.find((user) => user.nickname === username);
 };

@@ -4,8 +4,9 @@ const path = require('path');
 const moment = require('moment');
 require('moment/locale/ru');
 moment.locale('ru');
+const { getCircleStartDate, getCircleFinishDate } = require('./paramsService');
 
-const dutyFilePath = path.join(__dirname, 'duty.json');
+const dutyFilePath = path.join(__dirname, '..', 'data', 'duty.json');
 
 const getDuties = () => {
   try {
@@ -72,6 +73,7 @@ const getDutiesFormattedList = () => {
   }
 
   const dutiesByMonth = {};
+  let lastDutyEndDate = null;
 
   duties.forEach((duty) => {
     const startDate = moment(duty.startDate);
@@ -87,16 +89,68 @@ const getDutiesFormattedList = () => {
       endDate: endDate,
       name: duty.name,
     });
+
+    if (!lastDutyEndDate || endDate.isAfter(lastDutyEndDate)) {
+      lastDutyEndDate = endDate;
+    }
   });
 
   Object.keys(dutiesByMonth).forEach((month) => {
     dutiesByMonth[month].sort((a, b) => a.startDate - b.startDate);
   });
 
+  const circleFinishDate = getCircleFinishDate();
+
+  if (lastDutyEndDate.isBefore(circleFinishDate)) {
+    let nextDate = lastDutyEndDate.clone().add(1, 'day');
+
+    while (nextDate.isBefore(circleFinishDate)) {
+      const startDate = nextDate.clone();
+      const endDate = nextDate.clone().add(6, 'day');
+      const monthYear = startDate.format('MMMM YYYY');
+
+      if (!dutiesByMonth[monthYear]) {
+        dutiesByMonth[monthYear] = [];
+      }
+
+      dutiesByMonth[monthYear].push({
+        startDate: startDate,
+        endDate: endDate,
+        name: '❗<b>Дежурного нет</b>',
+      });
+
+      nextDate = nextDate.add(7, 'day');
+    }
+  }
+
   return dutiesByMonth;
 };
 
-const getAvailableSlots = () => {
+const isCurrentUserHasDutyThisCircle = (
+  duties,
+  circleStartDate,
+  circleFinishDate
+) => {
+  return duties.some((duty) => {
+    const dutyStartDate = moment(duty.startDate);
+    return dutyStartDate.isBetween(
+      circleStartDate,
+      circleFinishDate,
+      'day',
+      '[]'
+    );
+  });
+};
+
+const isCurrentUserHasDutyAfterThisCircle = (duties, circleFinishDate) => {
+  return duties.some((duty) => {
+    const dutyStartDate = moment(duty.startDate);
+    return dutyStartDate.isAfter(circleFinishDate, 'day');
+  });
+};
+
+const getAvailableSlots = (name) => {
+  const userDuties = getUserDuties(name);
   const duties = getDuties();
   const today = moment();
   const slots = [];
@@ -106,6 +160,41 @@ const getAvailableSlots = () => {
     lastDutyEndDate = today.clone().endOf('week').add(1, 'day');
   } else {
     lastDutyEndDate = moment(duties[duties.length - 1].endDate).add(1, 'day');
+  }
+
+  const circleStartDate = getCircleStartDate();
+  const circleFinishDate = getCircleFinishDate();
+  const hasDuties = isCurrentUserHasDutyThisCircle(
+    userDuties,
+    circleStartDate,
+    circleFinishDate
+  );
+
+  if (hasDuties) {
+    const hasAllDuties = isCurrentUserHasDutyAfterThisCircle(
+      userDuties,
+      circleFinishDate
+    );
+
+    if (hasAllDuties) {
+      return '⛔ Ты уже записан на дежурство. Дождись начала нового круга.';
+    }
+
+    lastDutyEndDate = circleFinishDate.clone();
+
+    for (let i = 0; i < 4; i++) {
+      const nextSlotStartDate = lastDutyEndDate.clone();
+      const nextSlotEndDate = nextSlotStartDate.clone().add(6, 'days');
+
+      slots.push({
+        startDate: nextSlotStartDate.format('DD MMMM'),
+        endDate: nextSlotEndDate.format('DD MMMM'),
+      });
+
+      lastDutyEndDate.add(7, 'days');
+    }
+
+    return slots;
   }
 
   for (let i = 0; i < duties.length - 1 && slots.length < 4; i++) {
@@ -128,7 +217,7 @@ const getAvailableSlots = () => {
     }
   }
 
-  while (slots.length < 4) {
+  while (lastDutyEndDate < circleFinishDate) {
     const nextSlotStartDate = lastDutyEndDate.clone();
     const nextSlotEndDate = nextSlotStartDate.clone().add(6, 'days');
 
