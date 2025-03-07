@@ -4,6 +4,7 @@ dotenv.config({ path: envFile });
 
 module.exports = {
   botToken: process.env.BOT_TOKEN,
+  botName: process.env.BOT_NAME,
   chatId: process.env.CHAT_ID,
   trustedIds: process.env.TRUSTED_IDS.split(',').map((id) => id.trim()),
   rulesLink: process.env.RULES_LINK,
