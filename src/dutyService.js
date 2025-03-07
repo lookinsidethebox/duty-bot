@@ -5,17 +5,19 @@ const moment = require('moment');
 require('moment/locale/ru');
 moment.locale('ru');
 const { getCircleStartDate, getCircleFinishDate } = require('./paramsService');
+const { createLog, createReadError, createWriteError } = require('./logService');
+const { filesFolderName, dutyFileName } = require('./config');
 
-const dutyFilePath = path.join(__dirname, '..', 'data', 'duty.json');
+const DUTY_FILE_PATH = path.join(__dirname, '..', filesFolderName, dutyFileName);
 
 const getDuties = () => {
   try {
-    const data = fs.readFileSync(dutyFilePath, 'utf-8');
+    const data = fs.readFileSync(DUTY_FILE_PATH, 'utf-8');
     const duties = JSON.parse(data);
     duties.sort((a, b) => moment(a.startDate).diff(moment(b.startDate)));
     return duties;
   } catch (error) {
-    console.error('Ошибка чтения duty.json:', error);
+    createReadError(dutyFileName, error);
     return [];
   }
 };
@@ -25,9 +27,7 @@ const getUserDuties = (name) => {
     const duties = getDuties().filter((duty) => duty.name === name);
     return duties.map((d) => ({
       startDate: d.startDate,
-      label: `${moment(d.startDate).format('DD MMMM')} — ${moment(
-        d.endDate
-      ).format('DD MMMM')}`,
+      label: `${moment(d.startDate).format('DD MMMM')} — ${moment(d.endDate).format('DD MMMM')}`,
     }));
   } catch (error) {
     return [];
@@ -37,9 +37,7 @@ const getUserDuties = (name) => {
 const getCurrentDuty = () => {
   try {
     const duties = getDuties();
-    return duties.find((d) =>
-      moment().isBetween(d.startDate, d.endDate, null, '[]')
-    );
+    return duties.find((d) => moment().isBetween(d.startDate, d.endDate, null, '[]'));
   } catch (error) {
     return [];
   }
@@ -126,19 +124,10 @@ const getDutiesFormattedList = () => {
   return dutiesByMonth;
 };
 
-const isCurrentUserHasDutyThisCircle = (
-  duties,
-  circleStartDate,
-  circleFinishDate
-) => {
+const isCurrentUserHasDutyThisCircle = (duties, circleStartDate, circleFinishDate) => {
   return duties.some((duty) => {
     const dutyStartDate = moment(duty.startDate);
-    return dutyStartDate.isBetween(
-      circleStartDate,
-      circleFinishDate,
-      'day',
-      '[]'
-    );
+    return dutyStartDate.isBetween(circleStartDate, circleFinishDate, 'day', '[]');
   });
 };
 
@@ -164,17 +153,10 @@ const getAvailableSlots = (name) => {
 
   const circleStartDate = getCircleStartDate();
   const circleFinishDate = getCircleFinishDate();
-  const hasDuties = isCurrentUserHasDutyThisCircle(
-    userDuties,
-    circleStartDate,
-    circleFinishDate
-  );
+  const hasDuties = isCurrentUserHasDutyThisCircle(userDuties, circleStartDate, circleFinishDate);
 
   if (hasDuties) {
-    const hasAllDuties = isCurrentUserHasDutyAfterThisCircle(
-      userDuties,
-      circleFinishDate
-    );
+    const hasAllDuties = isCurrentUserHasDutyAfterThisCircle(userDuties, circleFinishDate);
 
     if (hasAllDuties) {
       return '⛔ Ты уже записан на дежурство. Дождись начала нового круга.';
@@ -235,10 +217,7 @@ const getAvailableSlots = (name) => {
 const createDuty = async (moderName, selectedDate) => {
   const duties = getDuties();
   const formattedStartDate = moment(selectedDate, 'DD MMMM', 'ru');
-  const endDate = formattedStartDate
-    .clone()
-    .add(6, 'days')
-    .format('YYYY-MM-DD');
+  const endDate = formattedStartDate.clone().add(6, 'days').format('YYYY-MM-DD');
 
   const newDuty = {
     startDate: formattedStartDate.format('YYYY-MM-DD'),
@@ -250,9 +229,9 @@ const createDuty = async (moderName, selectedDate) => {
   duties.sort((a, b) => moment(a.startDate).diff(moment(b.startDate)));
 
   try {
-    await fsp.writeFile(dutyFilePath, JSON.stringify(duties, null, 2));
+    await fsp.writeFile(DUTY_FILE_PATH, JSON.stringify(duties, null, 2));
   } catch (error) {
-    console.error('Ошибка записи в duty.json:', error);
+    createWriteError(dutyFileName, error);
   }
 };
 
@@ -262,13 +241,9 @@ const removeDuty = async (duty) => {
 
   if (activeDuties.length !== duties.length) {
     try {
-      fs.writeFileSync(
-        dutyFilePath,
-        JSON.stringify(activeDuties, null, 2),
-        'utf-8'
-      );
+      fs.writeFileSync(DUTY_FILE_PATH, JSON.stringify(activeDuties, null, 2), 'utf-8');
     } catch (error) {
-      console.error('Ошибка записи в duty.json:', error);
+      createWriteError(dutyFileName, error);
     }
   }
 };
@@ -276,24 +251,18 @@ const removeDuty = async (duty) => {
 const removeFinishedDuty = () => {
   const duties = getDuties();
   const today = moment().startOf('day');
-  const activeDuties = duties.filter(
-    (duty) => !moment(duty.endDate).isBefore(today)
-  );
+  const activeDuties = duties.filter((duty) => !moment(duty.endDate).isBefore(today));
   let removedCount = duties.length - activeDuties.length;
 
   if (activeDuties.length !== duties.length) {
     try {
-      fs.writeFileSync(
-        dutyFilePath,
-        JSON.stringify(activeDuties, null, 2),
-        'utf-8'
-      );
-      console.log(`Количество удаленных старых дежурств: ${removedCount}.`);
+      fs.writeFileSync(DUTY_FILE_PATH, JSON.stringify(activeDuties, null, 2), 'utf-8');
+      createLog(`Количество удаленных старых дежурств: ${removedCount}.`);
     } catch (error) {
-      console.error('Ошибка записи в duty.json:', error);
+      createWriteError(dutyFileName, error);
     }
   } else {
-    console.log('Старых дежурств для удаления не найдено.');
+    createLog('Старых дежурств для удаления не найдено.');
   }
 };
 

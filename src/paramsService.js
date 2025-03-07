@@ -4,16 +4,18 @@ const path = require('path');
 const moment = require('moment');
 require('moment/locale/ru');
 moment.locale('ru');
+const { createReadError, createWriteError } = require('./logService');
+const { filesFolderName, modersFileName, paramsFileName } = require('./config');
 
-const paramsFilePath = path.join(__dirname, '..', 'data', 'params.json');
-const modersFilePath = path.join(__dirname, '..', 'data', '.moders.json');
+const paramsFilePath = path.join(__dirname, '..', filesFolderName, paramsFileName);
+const modersFilePath = path.join(__dirname, '..', filesFolderName, modersFileName);
 
 const getParams = () => {
   try {
     const data = fs.readFileSync(paramsFilePath, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
-    console.error('Ошибка чтения params.json:', error);
+    createReadError(paramsFileName, error);
     return [];
   }
 };
@@ -56,7 +58,7 @@ const updateCircleStartDate = () => {
       .format('YYYY-MM-DD');
     fs.writeFileSync(paramsFilePath, JSON.stringify(params, null, 2), 'utf-8');
   } catch (error) {
-    console.error('Ошибка записи в params.json:', error);
+    createWriteError(paramsFileName, error);
   }
 };
 
@@ -66,7 +68,7 @@ const setCircleStartDateManually = async (date) => {
     params.circleStartDate = date;
     await fsp.writeFile(paramsFilePath, JSON.stringify(params, null, 2));
   } catch (error) {
-    console.error('Ошибка записи в params.json:', error);
+    createWriteError(paramsFileName, error);
   }
 };
 
@@ -76,7 +78,7 @@ const getModersCount = () => {
     const moders = JSON.parse(data);
     return moders.length;
   } catch (error) {
-    console.error('Ошибка чтения .moders.json:', error);
+    createReadError(modersFileName, error);
     return [];
   }
 };

@@ -1,3 +1,5 @@
+const { rulesLink, moneyLink, tinkoffCard, hipotekarnaCard } = require('./config');
+const { createLog } = require('./logService');
 const {
   getCurrentDuty,
   getByStartDate,
@@ -14,12 +16,6 @@ const {
   getModersNotOnDuty,
   getModerByUsername,
 } = require('./userService');
-const {
-  rulesLink,
-  moneyLink,
-  tinkoffCard,
-  hipotekarnaCard,
-} = require('./config');
 const {
   getCircleStartDate,
   getCircleFinishDate,
@@ -69,9 +65,7 @@ const getFormattedDutyList = () => {
 
           while (missingStart.isBefore(duty.startDate)) {
             let missingEnd = missingStart.clone().add(6, 'day');
-            const missingMonth = getCapitalizedMonth(
-              missingStart.format('MMMM YYYY')
-            );
+            const missingMonth = getCapitalizedMonth(missingStart.format('MMMM YYYY'));
 
             if (missingStart >= circleStartDate && !isCircleStartDateSet) {
               message += '\n 🚀 Начало нового круга \n\n';
@@ -79,10 +73,7 @@ const getFormattedDutyList = () => {
             }
 
             const nextWeekStartDate = missingStart.clone().add(1, 'day');
-            if (
-              nextWeekStartDate >= circleFinishDate &&
-              !isCircleFinishDateSet
-            ) {
+            if (nextWeekStartDate >= circleFinishDate && !isCircleFinishDateSet) {
               message += '\n 🏁 Конец круга \n\n';
               isCircleFinishDateSet = true;
             }
@@ -227,8 +218,7 @@ const getMondayReminder = () => {
     const moderName = getModerName(todayDuty.name);
     message = `🔔 <b>Напоминание:</b> с сегодняшнего дня дежурит ${moderName}!`;
   } else {
-    message =
-      '🔔 <b>Напоминание:</b> сегодня дежурного нет, никто не записался 😢';
+    message = '🔔 <b>Напоминание:</b> сегодня дежурного нет, никто не записался 😢';
   }
 
   return message;
@@ -242,11 +232,9 @@ const getSundayReminder = () => {
     const moderName = getModerName(todayDuty.name);
     message = `🔔 <b>Напоминание:</b> сегодня заканчивается твое дежурство, ${moderName}!\n`;
     message += `Пожалуйста, ознакомься с памяткой: ${rulesLink}\n`;
-    message +=
-      '❗Не забудь записаться на новое дежурство с помощью команды: /assign';
+    message += '❗Не забудь записаться на новое дежурство с помощью команды: /assign';
   } else {
-    message =
-      '🔔 <b>Напоминание:</b> сегодня дежурного нет, завершать дежурство некому 😢\n';
+    message = '🔔 <b>Напоминание:</b> сегодня дежурного нет, завершать дежурство некому 😢\n';
     message += 'Записаться на новое дежурство: /assign';
   }
 
@@ -262,10 +250,14 @@ const getMoneyInfo = () => {
 };
 
 const makeEverydayMaintenance = () => {
+  createLog('Начинаем ежедневное обслуживание...');
+
   if (isCircleStartDateToday()) {
     updateCircleStartDate();
+    createLog('Дата начала нового круга обновлена');
   }
-  console.log('✅ Ежедневное обслуживание произведено успешно!');
+
+  createLog('✅ Ежедневное обслуживание произведено успешно!');
 };
 
 module.exports = {

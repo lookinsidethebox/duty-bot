@@ -1,21 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 const { getDuties } = require('./dutyService');
+const { createReadError } = require('./logService');
+const { filesFolderName, modersFileName, miniModersFileName } = require('./config');
 
-const modersFilePath = path.join(__dirname, '..', 'data', '.moders.json');
-const miniModersFilePath = path.join(
-  __dirname,
-  '..',
-  'data',
-  '.mini-moders.json'
-);
+const modersFilePath = path.join(__dirname, '..', filesFolderName, modersFileName);
+const miniModersFilePath = path.join(__dirname, '..', filesFolderName, miniModersFileName);
 
 const getModers = () => {
   try {
     const data = fs.readFileSync(modersFilePath, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
-    console.error('Ошибка чтения .moders.json:', error);
+    createReadError(modersFileName, error);
     return [];
   }
 };
@@ -24,9 +21,7 @@ const getModersNotOnDuty = () => {
   const allModers = getModers();
   const duties = getDuties();
   const modersOnDutyNames = new Set(duties.map((duty) => duty.name));
-  const modersNotOnDuty = allModers.filter(
-    (moder) => !modersOnDutyNames.has(moder.name)
-  );
+  const modersNotOnDuty = allModers.filter((moder) => !modersOnDutyNames.has(moder.name));
   return modersNotOnDuty;
 };
 
@@ -41,7 +36,7 @@ const getMiniModers = () => {
     const data = fs.readFileSync(miniModersFilePath, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
-    console.error('Ошибка чтения .mini-moders.json:', error);
+    createReadError(miniModersFileName, error);
     return [];
   }
 };

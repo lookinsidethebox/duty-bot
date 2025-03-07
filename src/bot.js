@@ -3,6 +3,7 @@ const cron = require('node-cron');
 const { botToken, chatId, trustedIds, rulesLink } = require('./config');
 const { removeFinishedDuty } = require('./dutyService');
 const { setCircleStartDateManually } = require('./paramsService');
+const { createLog } = require('./logService');
 const {
   getDuty,
   getFormattedDutyList,
@@ -28,7 +29,9 @@ bot.use(async (ctx, next) => {
   if (isTrustedChat(ctx)) {
     return next();
   } else {
-    console.log(`⛔ Команда отклонена: чат ${ctx.chat?.id} не доверенный.`);
+    const commandText = ctx.message && ctx.message.text ? ctx.message.text : 'неизвестная команда';
+    const chatText = ctx.chat && ctx.chat.id ? ctx.chat.id : 'неизвестный пользователь';
+    createLog(`⛔ Команда ${commandText} отклонена: ${chatText} не доверенный.`);
     await ctx.reply('⛔ Извините, вам запрещено пользоваться этим ботом.');
   }
 });
@@ -106,7 +109,6 @@ bot.action(/select_slot_.+/, async (ctx) => {
 
 bot.command('remove', (ctx) => {
   const result = getDutiesToRemove(ctx.from.username);
-  console.log('result: ', result);
 
   if (typeof result === 'string') {
     ctx.reply(result, { parse_mode: 'HTML' });
@@ -166,13 +168,13 @@ bot.command('test_maintenance', async (ctx) => {
 cron.schedule('0 10 * * 1', async () => {
   const message = getMondayReminder();
   await bot.telegram.sendMessage(chatId, message);
-  console.log('Понедельничное напоминание отправлено: ', message);
+  createLog(`Понедельничное напоминание отправлено: ${message}`);
 });
 
 cron.schedule('0 20 * * 0', async () => {
   const message = getSundayReminder();
   await bot.telegram.sendMessage(chatId, message);
-  console.log('Воскресное напоминание отправлено: ', message);
+  createLog(`Воскресное напоминание отправлено: ${message}`);
 });
 
 cron.schedule('0 0 * * 1', async () => {

@@ -1,5 +1,4 @@
 node_modules
+data
 .env
-duty.json
-.moders.json
-.mini-moders.json
+.env.development
