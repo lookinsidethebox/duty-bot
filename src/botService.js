@@ -1,5 +1,6 @@
 const { rulesLink, moneyLink, tinkoffCard, hipotekarnaCard } = require('./config');
 const { createLog } = require('./logService');
+const { addCurrentDutyToHistory, getYearsList, getHistoryByYear } = require('./historyService');
 const {
   getCurrentDuty,
   getByStartDate,
@@ -9,6 +10,7 @@ const {
   createDuty,
   getUserDuties,
   removeDuty,
+  removeFinishedDuties,
 } = require('./dutyService');
 const {
   getModerName,
@@ -21,6 +23,7 @@ const {
   getCircleFinishDate,
   isCircleStartDateToday,
   updateCircleStartDate,
+  isTodayMonday,
 } = require('./paramsService');
 
 const getDuty = () => {
@@ -195,6 +198,32 @@ const removeUserDuty = async (username, selectedDate) => {
   return `✅ Дежурство успешно удалено! Не забудь записаться на новое: /assign`;
 };
 
+const getHistoryYears = () => {
+  const years = getYearsList();
+
+  if (!years || years.length === 0) {
+    return 'К сожалению, в истории пока пусто 😢';
+  }
+
+  return years;
+};
+
+const getHistory = (year) => {
+  const history = getHistoryByYear(year);
+
+  if (!history || history.length === 0) {
+    return 'К сожалению, история за этот год отсутствует 😢';
+  }
+
+  let message = `📋 <b>История дежурств за ${year}:</b>\n\n`;
+
+  history.map((item) => {
+    message += `${item.startDate} — ${item.endDate}: ${item.name}\n`;
+  });
+
+  return message.trim();
+};
+
 const getMiniModersList = () => {
   const miniModers = getMiniModers();
 
@@ -257,6 +286,11 @@ const makeEverydayMaintenance = () => {
     createLog('Дата начала нового круга обновлена');
   }
 
+  if (isTodayMonday()) {
+    addCurrentDutyToHistory();
+    removeFinishedDuties();
+  }
+
   createLog('✅ Ежедневное обслуживание произведено успешно!');
 };
 
@@ -272,4 +306,6 @@ module.exports = {
   getDutiesToRemove,
   removeUserDuty,
   makeEverydayMaintenance,
+  getHistoryYears,
+  getHistory,
 };

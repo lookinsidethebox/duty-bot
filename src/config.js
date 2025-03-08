@@ -16,4 +16,5 @@ module.exports = {
   miniModersFileName: process.env.MINI_MODERS_FILE_NAME,
   dutyFileName: process.env.DUTY_FILE_NAME,
   paramsFileName: process.env.PARAMS_FILE_NAME,
+  historyFileName: process.env.HISTORY_FILE_NAME,
 };

@@ -1,7 +1,6 @@
 const { Telegraf } = require('telegraf');
 const cron = require('node-cron');
 const { botToken, chatId, trustedIds, rulesLink } = require('./config');
-const { removeFinishedDuty } = require('./dutyService');
 const { setCircleStartDateManually } = require('./paramsService');
 const { createLog } = require('./logService');
 const {
@@ -16,6 +15,8 @@ const {
   getDutiesToRemove,
   removeUserDuty,
   makeEverydayMaintenance,
+  getHistoryYears,
+  getHistory,
 } = require('./botService');
 
 const bot = new Telegraf(botToken);
@@ -41,13 +42,13 @@ bot.telegram.setMyCommands([
   { command: 'list', description: 'График дежурств' },
   { command: 'assign', description: 'Записаться на дежурство' },
   { command: 'remove', description: 'Удалить дежурство' },
+  { command: 'history', description: 'Посмотреть историю дежурств' },
   { command: 'mini_moders', description: 'Список мини-модеров' },
   { command: 'rules', description: 'Памятка дежурного' },
   { command: 'money', description: 'Отчет по оплате за хостинг' },
+  // { command: 'test_maintenance', description: 'Тест makeEverydayMaintenance' },
   // { command: 'test_monday', description: 'Тест getMondayReminder' },
   // { command: 'test_sunday', description: 'Тест getSundayReminder' },
-  // { command: 'test_remove', description: 'Тест removeFinishedDuty' },
-  // { command: 'test_maintenance', description: 'Тест makeEverydayMaintenance' },
 ]);
 
 bot.command('blame', async (ctx) => {
@@ -135,6 +136,33 @@ bot.action(/remove_duty_.+/, async (ctx) => {
   ctx.answerCbQuery();
 });
 
+bot.command('history', (ctx) => {
+  const result = getHistoryYears();
+
+  if (typeof result === 'string') {
+    ctx.reply(result, { parse_mode: 'HTML' });
+  } else {
+    const buttons = result.map((year) => [{ text: year, callback_data: `history_year_${year}` }]);
+
+    ctx.reply('❗<b>Историю за какой год ты хочешь посмотреть?</b>', {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: buttons,
+      },
+    });
+  }
+});
+
+bot.action(/history_year_.+/, async (ctx) => {
+  const data = ctx.match[0];
+  console.log('data: ', data);
+  const selectedYear = data.replace('history_year_', '');
+  const message = getHistory(selectedYear);
+  await ctx.reply(message, { parse_mode: 'HTML' });
+  await ctx.deleteMessage();
+  ctx.answerCbQuery();
+});
+
 bot.command('rules', async (ctx) => {
   await ctx.reply(`📋 <b>Памятка для дежурного:</b>\n ${rulesLink}`, {
     parse_mode: 'HTML',
@@ -157,10 +185,6 @@ bot.command('test_sunday', async (ctx) => {
   await ctx.reply(getSundayReminder(), { parse_mode: 'HTML' });
 });
 
-bot.command('test_remove', async (ctx) => {
-  removeFinishedDuty();
-});
-
 bot.command('test_maintenance', async (ctx) => {
   makeEverydayMaintenance();
 });
@@ -175,10 +199,6 @@ cron.schedule('0 20 * * 0', async () => {
   const message = getSundayReminder();
   await bot.telegram.sendMessage(chatId, message);
   createLog(`Воскресное напоминание отправлено: ${message}`);
-});
-
-cron.schedule('0 0 * * 1', async () => {
-  removeFinishedDuty();
 });
 
 cron.schedule('0 0 * * *', async () => {

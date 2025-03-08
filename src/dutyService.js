@@ -248,7 +248,7 @@ const removeDuty = async (duty) => {
   }
 };
 
-const removeFinishedDuty = () => {
+const removeFinishedDuties = () => {
   const duties = getDuties();
   const today = moment().startOf('day');
   const activeDuties = duties.filter((duty) => !moment(duty.endDate).isBefore(today));
@@ -274,7 +274,7 @@ module.exports = {
   getDutiesFormattedList,
   createDuty,
   removeDuty,
-  removeFinishedDuty,
+  removeFinishedDuties,
   getAvailableSlots,
   getUserDuties,
 };
