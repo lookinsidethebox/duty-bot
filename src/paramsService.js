@@ -83,7 +83,7 @@ const getModersCount = () => {
   }
 };
 
-const isTodayMonday = async () => {
+const isMondayToday = async () => {
   return moment().day() === 1;
 };
 
@@ -93,5 +93,5 @@ module.exports = {
   isCircleStartDateToday,
   updateCircleStartDate,
   setCircleStartDateManually,
-  isTodayMonday,
+  isMondayToday,
 };

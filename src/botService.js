@@ -17,13 +17,14 @@ const {
   getMiniModers,
   getModersNotOnDuty,
   getModerByUsername,
+  getModerWhoHasBirthdayToday,
 } = require('./userService');
 const {
   getCircleStartDate,
   getCircleFinishDate,
   isCircleStartDateToday,
   updateCircleStartDate,
-  isTodayMonday,
+  isMondayToday,
 } = require('./paramsService');
 
 const getDuty = () => {
@@ -162,7 +163,8 @@ const assignDuty = async (username, selectedDate) => {
   }
 
   await createDuty(moder.name, selectedDate);
-  return `✅ Запись успешно добавлена! Твое дежурство будет начинаться с ${selectedDate}.`;
+  const list = getFormattedDutyList();
+  return `✅ Запись успешно добавлена! Твое дежурство будет начинаться с ${selectedDate}.\n\n${list}`;
 };
 
 const getDutiesToRemove = (username) => {
@@ -195,7 +197,8 @@ const removeUserDuty = async (username, selectedDate) => {
   }
 
   await removeDuty(dutyToRemove);
-  return `✅ Дежурство успешно удалено! Не забудь записаться на новое: /assign`;
+  const list = getFormattedDutyList();
+  return `✅ Дежурство успешно удалено!\n\n${list}`;
 };
 
 const getHistoryYears = () => {
@@ -280,18 +283,30 @@ const getMoneyInfo = () => {
 
 const makeEverydayMaintenance = () => {
   createLog('Начинаем ежедневное обслуживание...');
+  let message = '';
 
   if (isCircleStartDateToday()) {
     updateCircleStartDate();
     createLog('Дата начала нового круга обновлена');
   }
 
-  if (isTodayMonday()) {
+  if (isMondayToday()) {
     addCurrentDutyToHistory();
     removeFinishedDuties();
   }
 
+  const birthdayModer = getModerWhoHasBirthdayToday();
+
+  if (birthdayModer) {
+    const birthDayMessage = `🎉🎉🎉 Сегодня день рождения у @${birthdayModer.nickname}!`;
+    message += birthDayMessage;
+    createLog(birthDayMessage);
+  } else {
+    createLog('Сегодня ни у кого нет дней рождений');
+  }
+
   createLog('✅ Ежедневное обслуживание произведено успешно!');
+  return message;
 };
 
 module.exports = {

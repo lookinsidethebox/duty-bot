@@ -103,7 +103,7 @@ bot.action(/select_slot_.+/, async (ctx) => {
   const data = ctx.match[0];
   const selectedDate = data.replace('select_slot_', '');
   const message = await assignDuty(ctx.from.username, selectedDate);
-  await ctx.reply(message);
+  await ctx.reply(message, { parse_mode: 'HTML' });
   await ctx.deleteMessage();
   ctx.answerCbQuery();
 });
@@ -131,7 +131,7 @@ bot.action(/remove_duty_.+/, async (ctx) => {
   const data = ctx.match[0];
   const selectedDate = data.replace('remove_duty_', '');
   const message = await removeUserDuty(ctx.from.username, selectedDate);
-  await ctx.reply(message);
+  await ctx.reply(message, { parse_mode: 'HTML' });
   await ctx.deleteMessage();
   ctx.answerCbQuery();
 });
@@ -186,7 +186,11 @@ bot.command('test_sunday', async (ctx) => {
 });
 
 bot.command('test_maintenance', async (ctx) => {
-  makeEverydayMaintenance();
+  const message = makeEverydayMaintenance();
+
+  if (message) {
+    await ctx.reply(message, { parse_mode: 'HTML' });
+  }
 });
 
 cron.schedule('0 10 * * 1', async () => {
@@ -202,7 +206,11 @@ cron.schedule('0 20 * * 0', async () => {
 });
 
 cron.schedule('0 0 * * *', async () => {
-  makeEverydayMaintenance();
+  const message = makeEverydayMaintenance();
+
+  if (message) {
+    await bot.telegram.sendMessage(chatId, message);
+  }
 });
 
 module.exports = bot;

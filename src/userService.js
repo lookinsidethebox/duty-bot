@@ -1,5 +1,8 @@
 const fs = require('fs');
 const path = require('path');
+const moment = require('moment');
+require('moment/locale/ru');
+moment.locale('ru');
 const { getDuties } = require('./dutyService');
 const { createReadError } = require('./logService');
 const { filesFolderName, modersFileName, miniModersFileName } = require('./config');
@@ -50,9 +53,16 @@ const getModerByUsername = (username) => {
   return moders.find((user) => user.nickname === username);
 };
 
+const getModerWhoHasBirthdayToday = () => {
+  const moders = getModers();
+  const currentDate = moment().format('MM-DD');
+  return moders.find((moder) => moder.birthday === currentDate);
+};
+
 module.exports = {
   getModerName,
   getMiniModers,
   getModersNotOnDuty,
   getModerByUsername,
+  getModerWhoHasBirthdayToday,
 };
