@@ -38,6 +38,22 @@ const getDuty = () => {
   }
 };
 
+const getMyDuty = (username) => {
+  const duties = getDutiesToRemove(username);
+
+  if (typeof duties === 'string') {
+    return duties;
+  }
+
+  let message = `📋 <b>Список твоих дежурств:</b>\n\n`;
+
+  duties.map((duty) => {
+    message += `${duty.label}\n`;
+  });
+
+  return message.trim();
+};
+
 const getFormattedDutyList = () => {
   const dutiesByMonth = getDutiesFormattedList();
 
@@ -311,6 +327,7 @@ const makeEverydayMaintenance = () => {
 
 module.exports = {
   getDuty,
+  getMyDuty,
   getFormattedDutyList,
   getMondayReminder,
   getSundayReminder,

@@ -5,6 +5,7 @@ const { setCircleStartDateManually } = require('./paramsService');
 const { createLog } = require('./logService');
 const {
   getDuty,
+  getMyDuty,
   getFormattedDutyList,
   getMondayReminder,
   getSundayReminder,
@@ -39,6 +40,7 @@ bot.use(async (ctx, next) => {
 
 bot.telegram.setMyCommands([
   { command: 'blame', description: 'Кто сегодня дежурный?' },
+  { command: 'doom', description: 'Когда я дежурю?' },
   { command: 'list', description: 'График дежурств' },
   { command: 'assign', description: 'Записаться на дежурство' },
   { command: 'remove', description: 'Удалить дежурство' },
@@ -57,6 +59,14 @@ bot.command('blame', async (ctx) => {
 
 bot.hears(/кто дежурный\??/i, async (ctx) => {
   await ctx.reply(getDuty(), { parse_mode: 'HTML' });
+});
+
+bot.command('doom', async (ctx) => {
+  await ctx.reply(getMyDuty(ctx.from.username), { parse_mode: 'HTML' });
+});
+
+bot.hears(/когда я дежурю\??/i, async (ctx) => {
+  await ctx.reply(getMyDuty(ctx.from.username), { parse_mode: 'HTML' });
 });
 
 bot.hears('set_circle_start_date', async (ctx) => {
