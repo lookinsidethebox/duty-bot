@@ -17,4 +17,5 @@ module.exports = {
   dutyFileName: process.env.DUTY_FILE_NAME,
   paramsFileName: process.env.PARAMS_FILE_NAME,
   historyFileName: process.env.HISTORY_FILE_NAME,
+  holidaysFileName: process.env.HOLIDAYS_FILE_NAME,
 };

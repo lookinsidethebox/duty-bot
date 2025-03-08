@@ -18,6 +18,7 @@ const {
   makeEverydayMaintenance,
   getHistoryYears,
   getHistory,
+  getHolidayList,
 } = require('./botService');
 
 const bot = new Telegraf(botToken);
@@ -46,6 +47,7 @@ bot.telegram.setMyCommands([
   { command: 'remove', description: 'Удалить дежурство' },
   { command: 'history', description: 'Посмотреть историю дежурств' },
   { command: 'mini_moders', description: 'Список мини-модеров' },
+  { command: 'holidays', description: 'Список праздников' },
   { command: 'rules', description: 'Памятка дежурного' },
   { command: 'money', description: 'Отчет по оплате за хостинг' },
   // { command: 'test_maintenance', description: 'Тест makeEverydayMaintenance' },
@@ -185,6 +187,10 @@ bot.command('money', async (ctx) => {
 
 bot.command('mini_moders', async (ctx) => {
   await ctx.reply(getMiniModersList(), { parse_mode: 'HTML' });
+});
+
+bot.command('holidays', async (ctx) => {
+  await ctx.reply(getHolidayList(), { parse_mode: 'HTML' });
 });
 
 bot.command('test_monday', async (ctx) => {

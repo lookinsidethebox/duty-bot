@@ -2,6 +2,11 @@ const { rulesLink, moneyLink, tinkoffCard, hipotekarnaCard } = require('./config
 const { createLog } = require('./logService');
 const { addCurrentDutyToHistory, getYearsList, getHistoryByYear } = require('./historyService');
 const {
+  getHolidaysFormatted,
+  getTodayHoliday,
+  getTodayHolidayReminder,
+} = require('./holidaysService');
+const {
   getCurrentDuty,
   getByStartDate,
   getByEndDate,
@@ -246,13 +251,28 @@ const getHistory = (year) => {
 const getMiniModersList = () => {
   const miniModers = getMiniModers();
 
-  if (miniModers.length === 0) {
+  if (miniModers || miniModers.length === 0) {
     return 'Минимодеров нет 😢';
   }
 
   let message = '📋 <b>Список минимодеров:</b>\n';
   miniModers.forEach((moder) => {
     message += `<b>${moder.name}</b> (@${moder.nickname}): ${moder.topics}\n`;
+  });
+
+  return message.trim();
+};
+
+const getHolidayList = () => {
+  const holidays = getHolidaysFormatted();
+
+  if (!holidays || holidays.length === 0) {
+    return 'Праздников нет 😢';
+  }
+
+  let message = '📋 <b>Список праздников:</b>\n\n';
+  holidays.forEach((holiday) => {
+    message += `${holiday.date} — ${holiday.name}\n`;
   });
 
   return message.trim();
@@ -314,11 +334,19 @@ const makeEverydayMaintenance = () => {
   const birthdayModer = getModerWhoHasBirthdayToday();
 
   if (birthdayModer) {
-    const birthDayMessage = `🎉🎉🎉 Сегодня день рождения у @${birthdayModer.nickname}!`;
-    message += birthDayMessage;
-    createLog(birthDayMessage);
-  } else {
-    createLog('Сегодня ни у кого нет дней рождений');
+    message += `🎉🎉🎉 Сегодня день рождения у @${birthdayModer.nickname}!\n\n`;
+  }
+
+  const todayHoliday = getTodayHoliday();
+
+  if (todayHoliday) {
+    message += `🎉🎉🎉 Сегодня на форуме праздник: <b>${todayHoliday.name}</b>!\n\n`;
+  }
+
+  const todayHolidayReminder = getTodayHolidayReminder();
+
+  if (todayHolidayReminder) {
+    message += `🔔 <b>Напоминание:</b>\n ${todayHolidayReminder.date} состоится важное событие: <b>${todayHolidayReminder.name}</b>! \n\n`;
   }
 
   createLog('✅ Ежедневное обслуживание произведено успешно!');
@@ -340,4 +368,5 @@ module.exports = {
   makeEverydayMaintenance,
   getHistoryYears,
   getHistory,
+  getHolidayList,
 };
