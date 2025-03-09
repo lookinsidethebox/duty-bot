@@ -21,7 +21,7 @@ const getHolidaysFormatted = () => {
   const holidays = getHolidays();
   return holidays.map((holiday) => ({
     name: holiday.name,
-    date: `${moment(holiday.date).format('DD MMMM')}`,
+    date: `${moment(holiday.date, 'MM-DD').format('DD MMMM')}`,
   }));
 };
 
@@ -48,7 +48,7 @@ const getTodayHolidayReminder = () => {
 
   return {
     name: holiday.name,
-    date: `${moment(holiday.date).format('DD MMMM')}`,
+    date: `${moment(holiday.date, 'MM-DD').format('DD MMMM')}`,
   };
 };
 
