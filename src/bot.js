@@ -209,13 +209,13 @@ bot.command('test_maintenance', async (ctx) => {
   }
 });
 
-cron.schedule('0 8 * * 1', async () => {
+cron.schedule('0 7 * * 1', async () => {
   const message = getMondayReminder();
   await bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML' });
   createLog(`Понедельничное напоминание отправлено: ${message}`);
 });
 
-cron.schedule('0 18 * * 0', async () => {
+cron.schedule('0 17 * * 0', async () => {
   const message = getSundayReminder();
   await bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML' });
   createLog(`Воскресное напоминание отправлено: ${message}`);
