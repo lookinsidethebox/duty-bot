@@ -251,7 +251,7 @@ const getHistory = (year) => {
 const getMiniModersList = () => {
   const miniModers = getMiniModers();
 
-  if (miniModers || miniModers.length === 0) {
+  if (!miniModers || miniModers.length === 0) {
     return 'Минимодеров нет 😢';
   }
 

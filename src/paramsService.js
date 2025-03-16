@@ -83,7 +83,7 @@ const getModersCount = () => {
   }
 };
 
-const isMondayToday = async () => {
+const isMondayToday = () => {
   return moment().day() === 1;
 };
 
