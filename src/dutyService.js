@@ -27,7 +27,9 @@ const getUserDuties = (name) => {
     const duties = getDuties().filter((duty) => duty.name === name);
     return duties.map((d) => ({
       startDate: d.startDate,
-      label: `${moment(d.startDate).format('DD MMMM')} — ${moment(d.endDate).format('DD MMMM')}`,
+      label: `${moment(d.startDate).format('DD MMMM YYYY')} — ${moment(d.endDate).format(
+        'DD MMMM YYYY'
+      )}`,
     }));
   } catch (error) {
     return [];
@@ -163,8 +165,8 @@ const getAvailableSlots = (name) => {
 
       if (slotStartDate.isBefore(nextDutyStart)) {
         slots.push({
-          startDate: slotStartDate.format('DD MMMM'),
-          endDate: slotEndDate.format('DD MMMM'),
+          startDate: slotStartDate.format('DD MMMM YYYY'),
+          endDate: slotEndDate.format('DD MMMM YYYY'),
         });
       }
 
@@ -177,8 +179,8 @@ const getAvailableSlots = (name) => {
     const nextSlotEndDate = nextSlotStartDate.clone().add(6, 'days');
 
     slots.push({
-      startDate: nextSlotStartDate.format('DD MMMM'),
-      endDate: nextSlotEndDate.format('DD MMMM'),
+      startDate: nextSlotStartDate.format('DD MMMM YYYY'),
+      endDate: nextSlotEndDate.format('DD MMMM YYYY'),
     });
 
     lastDutyEndDate.add(7, 'days');
@@ -189,7 +191,7 @@ const getAvailableSlots = (name) => {
 
 const createDuty = async (moderName, selectedDate) => {
   const duties = getDuties();
-  const formattedStartDate = moment(selectedDate, 'DD MMMM', 'ru');
+  const formattedStartDate = moment(selectedDate, 'DD MMMM YYYY', 'ru');
   const endDate = formattedStartDate.clone().add(6, 'days').format('YYYY-MM-DD');
 
   const newDuty = {
