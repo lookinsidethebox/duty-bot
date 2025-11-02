@@ -145,7 +145,7 @@ const getFormattedDutyList = () => {
   if (modersNotOnDuty.length > 0) {
     message += `\n❗<b>Модеры, не записавшиеся на дежурство:</b>\n`;
     modersNotOnDuty.forEach((moder) => {
-      message += `${getModerName(moder.name)}`;
+      message += `${getModerName(moder.name)}\n`;
     });
   }
 
