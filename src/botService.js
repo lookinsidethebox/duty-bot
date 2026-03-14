@@ -289,7 +289,7 @@ const getMoneyYears = () => {
   const years = getMoneyYearsList();
 
   if (!years || years.length === 0) {
-    return 'К сожалению, история пополнений и вычетов пока пуста 😢';
+    return 'К сожалению, история пополнений и трат пока пуста 😢';
   }
 
   return years;
@@ -308,7 +308,7 @@ const getMoneyHistoryOptions = () => {
   ];
 
   return {
-    message: '❗<b>Историю пополнений и вычетов за какой период ты хочешь посмотреть?</b>',
+    message: '❗<b>Историю пополнений и трат за какой период ты хочешь посмотреть?</b>',
     buttons,
   };
 };
@@ -331,6 +331,14 @@ const formatMoneyValue = (value, currencySymbol) => {
   return `${value} ${currencySymbol}`;
 };
 
+const italicizeMoneyValue = (value) => {
+  if (!value) {
+    return value;
+  }
+
+  return `<i>${value}</i>`;
+};
+
 const getMoneyEntryAmount = (entry) => {
   const incomeEur = formatMoneyValue(entry.income_eur ?? entry.incomeEur, '€');
   const incomeRub = formatMoneyValue(entry.income_rub ?? entry.incomeRub, '₽');
@@ -347,23 +355,24 @@ const getMoneyHistory = (year) => {
   const history = getMoneyHistoryByYear(year);
 
   if (!history || history.length === 0) {
-    return 'К сожалению, история пополнений и вычетов за этот год отсутствует 😢';
+    return 'К сожалению, история пополнений и трат за этот год отсутствует 😢';
   }
 
-  let message = `📋 <b>История пополнений и вычетов за ${year}:</b>\n\n`;
+  let message = `📋 <b>История пополнений и трат за ${year}:</b>\n\n`;
 
   history.forEach((item) => {
     const incomeEur = formatMoneyValue(item.incomeEur, '€');
     const incomeRub = formatMoneyValue(item.incomeRub, '₽');
     const outcome = formatMoneyValue(item.outcome, '€');
-    const balance = formatMoneyValue(item.balance, '€');
+    const balance = italicizeMoneyValue(formatMoneyValue(item.balance, '€'));
     const operationAmount = outcome
       ? `${outcome.startsWith('-') ? '' : '-'}${outcome}`
       : [incomeEur, incomeRub ? `(${incomeRub})` : null].filter(Boolean).join(' ');
+    const formattedOperationAmount = italicizeMoneyValue(operationAmount);
 
     message += `<b>${item.date}</b>\n`;
-    message += operationAmount
-      ? `${item.description}: ${operationAmount}\n`
+    message += formattedOperationAmount
+      ? `${item.description}: ${formattedOperationAmount}\n`
       : `${item.description}\n`;
     message += balance ? `Баланс: ${balance}\n\n` : '\n';
   });
@@ -375,23 +384,24 @@ const getMoneyRecentHistory = () => {
   const history = getMoneyHistoryForLastMonths(3);
 
   if (!history || history.length === 0) {
-    return 'К сожалению, история пополнений и вычетов за последние 3 месяца отсутствует 😢';
+    return 'К сожалению, история пополнений и трат за последние 3 месяца отсутствует 😢';
   }
 
-  let message = '📋 <b>История пополнений и вычетов за последние 3 месяца:</b>\n\n';
+  let message = '📋 <b>История пополнений и трат за последние 3 месяца:</b>\n\n';
 
   history.forEach((item) => {
     const incomeEur = formatMoneyValue(item.incomeEur, '€');
     const incomeRub = formatMoneyValue(item.incomeRub, '₽');
     const outcome = formatMoneyValue(item.outcome, '€');
-    const balance = formatMoneyValue(item.balance, '€');
+    const balance = italicizeMoneyValue(formatMoneyValue(item.balance, '€'));
     const operationAmount = outcome
       ? `${outcome.startsWith('-') ? '' : '-'}${outcome}`
       : [incomeEur, incomeRub ? `(${incomeRub})` : null].filter(Boolean).join(' ');
+    const formattedOperationAmount = italicizeMoneyValue(operationAmount);
 
     message += `<b>${item.date}</b>\n`;
-    message += operationAmount
-      ? `${item.description}: ${operationAmount}\n`
+    message += formattedOperationAmount
+      ? `${item.description}: ${formattedOperationAmount}\n`
       : `${item.description}\n`;
     message += balance ? `Баланс: ${balance}\n\n` : '\n';
   });
@@ -412,7 +422,7 @@ const getMoneyRemoveOptions = () => {
   const entries = getRecentMoneyEntries(10);
 
   if (!entries || entries.length === 0) {
-    return 'В истории пополнений и вычетов пока нечего удалять 😢';
+    return 'В истории пополнений и трат пока нечего удалять 😢';
   }
 
   return {
@@ -431,7 +441,7 @@ const getMoneyAddOptions = () => {
     message: '❗<b>Что ты хочешь добавить в историю денег?</b>',
     buttons: [
       [{ text: 'Пополнение', callback_data: 'money_add_income' }],
-      [{ text: 'Вычет', callback_data: 'money_add_outcome' }],
+      [{ text: 'Трата', callback_data: 'money_add_outcome' }],
     ],
   };
 };
