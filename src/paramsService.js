@@ -87,6 +87,24 @@ const isMondayToday = () => {
   return moment().day() === 1;
 };
 
+const getEuroExchangeRate = () => {
+  try {
+    const params = getParams();
+    return Number(params.euroExchangeRate) || 100;
+  } catch (error) {
+    return 100;
+  }
+};
+
+const getHostingDefaultAmount = () => {
+  try {
+    const params = getParams();
+    return Number(params.hostingDefaultAmount) || 46.99;
+  } catch (error) {
+    return 46.99;
+  }
+};
+
 module.exports = {
   getCircleStartDate,
   getCircleFinishDate,
@@ -94,4 +112,6 @@ module.exports = {
   updateCircleStartDate,
   setCircleStartDateManually,
   isMondayToday,
+  getEuroExchangeRate,
+  getHostingDefaultAmount,
 };

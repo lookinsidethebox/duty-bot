@@ -10,7 +10,25 @@ const {
   getMondayReminder,
   getSundayReminder,
   getMiniModersList,
-  getMoneyInfo,
+  getMoneyHistoryOptions,
+  getMoneyHistory,
+  getMoneyRecentHistory,
+  isMoneyManager,
+  getMoneyAccessDeniedMessage,
+  getMoneyRemoveOptions,
+  getMoneyAddOptions,
+  getMoneyOutcomeTypeOptions,
+  getMoneyCurrencyOptions,
+  getMoneyModerOptions,
+  getMoneyModerByNickname,
+  getMoneyEntryPrompt,
+  parseMoneyEntryInput,
+  getMoneyEntrySuccessMessage,
+  saveMoneyEntry,
+  removeMoneyEntry,
+  getMoneyEntryRemovedMessage,
+  getDefaultHostingEntryData,
+  getMoneyHostingPromptOptions,
   getNextDutySlots,
   assignDuty,
   getDutiesToRemove,
@@ -23,6 +41,32 @@ const {
 
 const bot = new Telegraf(botToken);
 const userState = {};
+
+const clearActionMessage = async (ctx, fallbackText = '✅ Готово.') => {
+  try {
+    await ctx.deleteMessage();
+    return;
+  } catch (error) {}
+
+  try {
+    await ctx.editMessageText(fallbackText, { parse_mode: 'HTML' });
+    return;
+  } catch (error) {}
+
+  try {
+    await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+  } catch (error) {}
+};
+
+const MONEY_OPERATION_TYPES = {
+  income: 'income',
+  outcome: 'outcome',
+};
+
+const MONEY_CURRENCIES = {
+  eur: 'eur',
+  rub: 'rub',
+};
 
 const isTrustedChat = (ctx) => {
   return ctx.chat && trustedIds.includes(ctx.chat.id.toString());
@@ -50,6 +94,8 @@ bot.telegram.setMyCommands([
   { command: 'holidays', description: 'Список праздников' },
   { command: 'rules', description: 'Памятка дежурного' },
   { command: 'money', description: 'Отчет по оплате за хостинг' },
+  { command: 'money_add', description: 'Добавить запись в финансы' },
+  { command: 'money_remove', description: 'Удалить запись из финансов' },
   // { command: 'test_maintenance', description: 'Тест makeEverydayMaintenance' },
   // { command: 'test_monday', description: 'Тест getMondayReminder' },
   // { command: 'test_sunday', description: 'Тест getSundayReminder' },
@@ -77,7 +123,7 @@ bot.hears('set_circle_start_date', async (ctx) => {
   await ctx.reply('Пожалуйста, отправь дату в формате YYYY-MM-DD.');
 });
 
-bot.hears(/^\d{4}-\d{2}-\d{2}$/, async (ctx) => {
+bot.hears(/^\d{4}-\d{2}-\d{2}$/, async (ctx, next) => {
   const userId = ctx.from.id;
 
   if (userState[userId] === 'awaiting_circle_start_date') {
@@ -85,7 +131,10 @@ bot.hears(/^\d{4}-\d{2}-\d{2}$/, async (ctx) => {
     await setCircleStartDateManually(newDate);
     userState[userId] = null;
     await ctx.reply(`Дата начала круга успешно установлена: ${newDate}`);
+    return;
   }
+
+  return next();
 });
 
 bot.command('list', async (ctx) => {
@@ -167,7 +216,6 @@ bot.command('history', (ctx) => {
 
 bot.action(/history_year_.+/, async (ctx) => {
   const data = ctx.match[0];
-  console.log('data: ', data);
   const selectedYear = data.replace('history_year_', '');
   const message = getHistory(selectedYear);
   await ctx.reply(message, { parse_mode: 'HTML' });
@@ -181,8 +229,244 @@ bot.command('rules', async (ctx) => {
   });
 });
 
-bot.command('money', async (ctx) => {
-  await ctx.reply(getMoneyInfo(), { parse_mode: 'HTML' });
+bot.command('money', (ctx) => {
+  const result = getMoneyHistoryOptions();
+
+  if (typeof result === 'string') {
+    ctx.reply(result, { parse_mode: 'HTML' });
+  } else {
+    ctx.reply(result.message, {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: result.buttons,
+      },
+    });
+  }
+});
+
+bot.action(/money_year_.+/, async (ctx) => {
+  const data = ctx.match[0];
+  const selectedYear = data.replace('money_year_', '');
+  const message = getMoneyHistory(selectedYear);
+  await ctx.reply(message, { parse_mode: 'HTML' });
+  await ctx.deleteMessage();
+  ctx.answerCbQuery();
+});
+
+bot.action('money_period_last_3_months', async (ctx) => {
+  const message = getMoneyRecentHistory();
+  await ctx.reply(message, { parse_mode: 'HTML' });
+  await ctx.deleteMessage();
+  ctx.answerCbQuery();
+});
+
+bot.command('money_remove', async (ctx) => {
+  if (!isMoneyManager(ctx.from.id)) {
+    await ctx.reply(getMoneyAccessDeniedMessage(), { parse_mode: 'HTML' });
+    return;
+  }
+
+  const options = getMoneyRemoveOptions();
+
+  if (typeof options === 'string') {
+    await ctx.reply(options, { parse_mode: 'HTML' });
+    return;
+  }
+
+  await ctx.reply(options.message, {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: options.buttons,
+    },
+  });
+});
+
+bot.command('money_add', async (ctx) => {
+  if (!isMoneyManager(ctx.from.id)) {
+    await ctx.reply(getMoneyAccessDeniedMessage(), { parse_mode: 'HTML' });
+    return;
+  }
+
+  const options = getMoneyAddOptions();
+
+  await ctx.reply(options.message, {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: options.buttons,
+    },
+  });
+});
+
+bot.action(/money_add_(income|outcome)/, async (ctx) => {
+  if (!isMoneyManager(ctx.from.id)) {
+    await ctx.reply(getMoneyAccessDeniedMessage(), { parse_mode: 'HTML' });
+    await clearActionMessage(ctx, '⛔ Доступ запрещён.');
+    ctx.answerCbQuery();
+    return;
+  }
+
+  const operationType = ctx.match[1];
+
+  if (operationType === MONEY_OPERATION_TYPES.outcome) {
+    userState[ctx.from.id] = {
+      type: 'awaiting_money_outcome_type',
+      operationType,
+    };
+
+    const options = getMoneyOutcomeTypeOptions();
+
+    await ctx.reply(options.message, {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: options.buttons,
+      },
+    });
+  } else {
+    userState[ctx.from.id] = {
+      type: 'awaiting_money_currency',
+      operationType,
+    };
+
+    const options = getMoneyCurrencyOptions();
+
+    await ctx.reply(options.message, {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: options.buttons,
+      },
+    });
+  }
+
+  await ctx.deleteMessage();
+  ctx.answerCbQuery();
+});
+
+bot.action(/money_outcome_type_(hosting|domain)/, async (ctx) => {
+  if (!isMoneyManager(ctx.from.id)) {
+    await ctx.reply(getMoneyAccessDeniedMessage(), { parse_mode: 'HTML' });
+    await ctx.deleteMessage();
+    ctx.answerCbQuery();
+    return;
+  }
+
+  userState[ctx.from.id] = {
+    type: 'awaiting_money_entry',
+    operationType: MONEY_OPERATION_TYPES.outcome,
+    outcomeType: ctx.match[1],
+  };
+
+  const options = getMoneyHostingPromptOptions(userState[ctx.from.id]);
+  const replyOptions = { parse_mode: 'HTML' };
+
+  if (options.buttons) {
+    replyOptions.reply_markup = { inline_keyboard: options.buttons };
+  }
+
+  await ctx.reply(options.message, replyOptions);
+  await ctx.deleteMessage();
+  ctx.answerCbQuery();
+});
+
+bot.action('money_hosting_default_today', async (ctx) => {
+  if (!isMoneyManager(ctx.from.id)) {
+    await ctx.reply(getMoneyAccessDeniedMessage(), { parse_mode: 'HTML' });
+    await ctx.deleteMessage();
+    ctx.answerCbQuery();
+    return;
+  }
+
+  userState[ctx.from.id] = null;
+  const savedEntry = await saveMoneyEntry(getDefaultHostingEntryData());
+
+  if (!savedEntry) {
+    await ctx.reply('⛔ Не удалось сохранить запись в money.json.', { parse_mode: 'HTML' });
+    await ctx.deleteMessage();
+    ctx.answerCbQuery();
+    return;
+  }
+
+  await ctx.reply(getMoneyEntrySuccessMessage(savedEntry), { parse_mode: 'HTML' });
+  await ctx.deleteMessage();
+  ctx.answerCbQuery();
+});
+
+bot.action(/money_currency_(income)_(eur|rub)/, async (ctx) => {
+  if (!isMoneyManager(ctx.from.id)) {
+    await ctx.reply(getMoneyAccessDeniedMessage(), { parse_mode: 'HTML' });
+    await ctx.deleteMessage();
+    ctx.answerCbQuery();
+    return;
+  }
+
+  const currency = ctx.match[2];
+  userState[ctx.from.id] = {
+    type: 'awaiting_money_moder',
+    operationType: MONEY_OPERATION_TYPES.income,
+    currency,
+  };
+
+  const options = getMoneyModerOptions();
+
+  await ctx.reply(options.message, {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: options.buttons,
+    },
+  });
+  await ctx.deleteMessage();
+  ctx.answerCbQuery();
+});
+
+bot.action(/money_moder_(.+)/, async (ctx) => {
+  if (!isMoneyManager(ctx.from.id)) {
+    await ctx.reply(getMoneyAccessDeniedMessage(), { parse_mode: 'HTML' });
+    await ctx.deleteMessage();
+    ctx.answerCbQuery();
+    return;
+  }
+
+  const moder = getMoneyModerByNickname(ctx.match[1]);
+
+  if (!moder) {
+    await ctx.reply('⛔ Не удалось найти модера для пополнения.', { parse_mode: 'HTML' });
+    await ctx.deleteMessage();
+    ctx.answerCbQuery();
+    return;
+  }
+
+  const previousState = userState[ctx.from.id];
+  userState[ctx.from.id] = {
+    type: 'awaiting_money_entry',
+    operationType: MONEY_OPERATION_TYPES.income,
+    currency: previousState?.currency || MONEY_CURRENCIES.eur,
+    moderName: moder.name,
+  };
+
+  await ctx.reply(getMoneyEntryPrompt(userState[ctx.from.id]), { parse_mode: 'HTML' });
+  await ctx.deleteMessage();
+  ctx.answerCbQuery();
+});
+
+bot.action(/money_remove_entry_(\d+)/, async (ctx) => {
+  if (!isMoneyManager(ctx.from.id)) {
+    await ctx.reply(getMoneyAccessDeniedMessage(), { parse_mode: 'HTML' });
+    await clearActionMessage(ctx, '⛔ Доступ запрещён.');
+    ctx.answerCbQuery();
+    return;
+  }
+
+  const removedEntry = await removeMoneyEntry(ctx.match[1]);
+
+  if (!removedEntry) {
+    await ctx.reply('⛔ Не удалось удалить запись из money.json.', { parse_mode: 'HTML' });
+    await clearActionMessage(ctx, '⛔ Не удалось удалить запись.');
+    ctx.answerCbQuery();
+    return;
+  }
+
+  await ctx.reply(getMoneyEntryRemovedMessage(removedEntry), { parse_mode: 'HTML' });
+  await clearActionMessage(ctx, '✅ Запись удалена.');
+  ctx.answerCbQuery();
 });
 
 bot.command('mini_moders', async (ctx) => {
@@ -207,6 +491,45 @@ bot.command('test_maintenance', async (ctx) => {
   if (message) {
     await ctx.reply(message, { parse_mode: 'HTML' });
   }
+});
+
+bot.on('text', async (ctx, next) => {
+  const state = userState[ctx.from.id];
+
+  if (!state || state.type !== 'awaiting_money_entry') {
+    return next();
+  }
+
+  if (!isMoneyManager(ctx.from.id)) {
+    userState[ctx.from.id] = null;
+    await ctx.reply(getMoneyAccessDeniedMessage(), { parse_mode: 'HTML' });
+    return;
+  }
+
+  const input = ctx.message.text.trim();
+
+  if (['отмена', '/cancel', 'cancel'].includes(input.toLowerCase())) {
+    userState[ctx.from.id] = null;
+    await ctx.reply('✅ Добавление записи отменено.', { parse_mode: 'HTML' });
+    return;
+  }
+
+  const parsedEntry = parseMoneyEntryInput(input, state);
+
+  if (parsedEntry.error) {
+    await ctx.reply(parsedEntry.error, { parse_mode: 'HTML' });
+    return;
+  }
+
+  const savedEntry = await saveMoneyEntry(parsedEntry);
+  userState[ctx.from.id] = null;
+
+  if (!savedEntry) {
+    await ctx.reply('⛔ Не удалось сохранить запись в money.json.', { parse_mode: 'HTML' });
+    return;
+  }
+
+  await ctx.reply(getMoneyEntrySuccessMessage(savedEntry), { parse_mode: 'HTML' });
 });
 
 cron.schedule('0 7 * * 1', async () => {

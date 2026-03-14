@@ -18,4 +18,5 @@ module.exports = {
   paramsFileName: process.env.PARAMS_FILE_NAME,
   historyFileName: process.env.HISTORY_FILE_NAME,
   holidaysFileName: process.env.HOLIDAYS_FILE_NAME,
+  moneyFileName: process.env.MONEY_FILE_NAME || 'money.json',
 };

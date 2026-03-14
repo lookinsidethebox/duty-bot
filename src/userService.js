@@ -53,6 +53,15 @@ const getModerByUsername = (username) => {
   return moders.find((user) => user.nickname === username);
 };
 
+const getModerByTelegramId = (telegramId) => {
+  if (!telegramId) {
+    return null;
+  }
+
+  const moders = getModers();
+  return moders.find((user) => user.telegramid === telegramId);
+};
+
 const getModerWhoHasBirthdayToday = () => {
   const moders = getModers();
   const currentDate = moment().format('MM-DD');
@@ -60,9 +69,11 @@ const getModerWhoHasBirthdayToday = () => {
 };
 
 module.exports = {
+  getModers,
   getModerName,
   getMiniModers,
   getModersNotOnDuty,
   getModerByUsername,
+  getModerByTelegramId,
   getModerWhoHasBirthdayToday,
 };
