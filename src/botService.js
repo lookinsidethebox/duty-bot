@@ -140,14 +140,7 @@ const getFormattedDutyList = () => {
     message += '\n 🏁 Конец круга\n';
   }
 
-  const modersNotOnDuty = getModersNotOnDuty();
-
-  if (modersNotOnDuty.length > 0) {
-    message += `\n❗<b>Модеры, не записавшиеся на дежурство:</b>\n`;
-    modersNotOnDuty.forEach((moder) => {
-      message += `${getModerName(moder.name)}\n`;
-    });
-  }
+  message += getModersNotOnDutyMessage();
 
   message += '\nЗаписаться на новое дежурство: /assign';
   return message.trim();
@@ -155,6 +148,21 @@ const getFormattedDutyList = () => {
 
 const getCapitalizedMonth = (month) => {
   return month.charAt(0).toUpperCase() + month.slice(1);
+};
+
+const getModersNotOnDutyMessage = () => {
+  const modersNotOnDuty = getModersNotOnDuty();
+
+  if (modersNotOnDuty.length === 0) {
+    return '';
+  }
+
+  let message = `\n\n❗<b>Модеры, не записавшиеся на дежурство:</b>\n`;
+  modersNotOnDuty.forEach((moder) => {
+    message += `${getModerName(moder.name)}\n`;
+  });
+
+  return message.trimEnd();
 };
 
 const getNextDutySlots = (username) => {
@@ -288,6 +296,8 @@ const getMondayReminder = () => {
   } else {
     message = '🔔 <b>Напоминание:</b> сегодня дежурного нет, никто не записался 😢';
   }
+
+  message += getModersNotOnDutyMessage();
 
   return message;
 };
