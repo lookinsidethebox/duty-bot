@@ -32,8 +32,8 @@ const getCircleStartDate = () => {
 const getCircleFinishDate = () => {
   try {
     const startDate = getCircleStartDate();
-    const modersCount = getModersCount();
-    return startDate.add(modersCount, 'weeks');
+    const activeModersCount = getActiveModersCount();
+    return startDate.add(activeModersCount, 'weeks');
   } catch (error) {
     return [];
   }
@@ -52,9 +52,9 @@ const isCircleStartDateToday = () => {
 const updateCircleStartDate = () => {
   try {
     const params = getParams();
-    const modersCount = getModersCount();
+    const activeModersCount = getActiveModersCount();
     params.circleStartDate = moment(params.circleStartDate)
-      .add(modersCount, 'weeks')
+      .add(activeModersCount, 'weeks')
       .format('YYYY-MM-DD');
     fs.writeFileSync(paramsFilePath, JSON.stringify(params, null, 2), 'utf-8');
   } catch (error) {
@@ -72,11 +72,11 @@ const setCircleStartDateManually = async (date) => {
   }
 };
 
-const getModersCount = () => {
+const getActiveModersCount = () => {
   try {
     const data = fs.readFileSync(modersFilePath, 'utf-8');
     const moders = JSON.parse(data);
-    return moders.length;
+    return moders.filter((moder) => moder.isActive !== false).length;
   } catch (error) {
     createReadError(modersFileName, error);
     return [];
