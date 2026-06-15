@@ -21,10 +21,10 @@ const getModers = () => {
 };
 
 const getModersNotOnDuty = () => {
-  const allModers = getModers();
+  const activeModers = getModers().filter((moder) => moder.isActive !== false);
   const duties = getDuties();
   const modersOnDutyNames = new Set(duties.map((duty) => duty.name));
-  const modersNotOnDuty = allModers.filter((moder) => !modersOnDutyNames.has(moder.name));
+  const modersNotOnDuty = activeModers.filter((moder) => !modersOnDutyNames.has(moder.name));
   return modersNotOnDuty;
 };
 
